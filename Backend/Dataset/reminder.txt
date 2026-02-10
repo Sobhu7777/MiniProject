@@ -1,2 +1,7 @@
 
 Add the dataset folders you have created under the Backend->dataset folder 
+
+
+For Thunderstorm 
+>CAPE is all null need to fetch from a proper website 
+>Labels are also null might need to create synthetically 

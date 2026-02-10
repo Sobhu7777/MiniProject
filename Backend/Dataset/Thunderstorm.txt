@@ -1,0 +1,8 @@
+2m_temperature
+2m_dewpoint_temperature
+surface_pressure
+10m_wind_speed
+total_precipitation
+convective_available_potential_energy (CAPE)
+month
+day_of_year
