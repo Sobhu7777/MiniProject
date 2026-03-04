@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
+import { fetchWeatherForecast } from '../services/api';
 import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Legend, Area, ComposedChart
 } from 'recharts';
-import { fetchWeatherForecast } from '../data/mockData';
 
 const CONDITION_ICONS = { Sunny: '☀️', Cloudy: '☁️', Rainy: '🌧️', Stormy: '⛈️' };
 
@@ -47,11 +47,10 @@ export default function WeatherForecast({ place, onBack }) {
             <button
               key={type}
               onClick={() => setChartType(type)}
-              className={`px-4 py-2 text-xs font-semibold rounded-xl border transition-all duration-200 ${
-                chartType === type
+              className={`px-4 py-2 text-xs font-semibold rounded-xl border transition-all duration-200 ${chartType === type
                   ? 'bg-brand-600 border-brand-500 text-white'
                   : 'bg-surface-card border-surface-border text-slate-400 hover:text-white hover:border-slate-500'
-              }`}
+                }`}
               id={`chart-toggle-${type}`}
             >
               {type === 'composed' ? '📈 Line + Area' : '📊 Bar Chart'}

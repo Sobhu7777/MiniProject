@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { REGIONS } from '../data/mockData';
+import { REGIONS } from '../services/api';
 
 export default function RegionSelector({ onSelect }) {
   const [hoveredId, setHoveredId] = useState(null);

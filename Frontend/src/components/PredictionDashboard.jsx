@@ -1,28 +1,29 @@
 import { useState, useEffect } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
-import { fetchPredictions, MONTHS } from '../data/mockData';
+import { fetchPredictions, MONTHS } from '../services/api';
 
-const RISK_COLORS = { Low: '#22c55e', Medium: '#eab308', High: '#ef4444' };
+const RISK_COLORS = { LOW: '#22c55e', MODERATE: '#eab308', HIGH: '#ef4444' };
 const DISASTER_ICONS = { thunderstorm: '⛈️', windstorm: '🌪️', flood: '🌊', landslide: '🏔️' };
 const DISASTER_LABELS = { thunderstorm: 'Thunderstorm', windstorm: 'Windstorm', flood: 'Flood', landslide: 'Landslide' };
 
 function RiskBadge({ level }) {
   const styles = {
-    Low:    'bg-green-500/20 text-green-400 border-green-500/40',
-    Medium: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/40',
-    High:   'bg-red-500/20 text-red-400 border-red-500/40',
+    LOW: 'bg-green-500/20 text-green-400 border-green-500/40',
+    MODERATE: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/40',
+    HIGH: 'bg-red-500/20 text-red-400 border-red-500/40',
   };
+  const displayLevel = level.charAt(0) + level.slice(1).toLowerCase();
   return (
     <span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${styles[level]}`}>
-      {level} Risk
+      {displayLevel} Risk
     </span>
   );
 }
 
 function MiniPieChart({ title, icon, probability, level }) {
   const data = [
-    { name: 'Risk',  value: Math.round(probability * 100) },
-    { name: 'Safe',  value: Math.round((1 - probability) * 100) },
+    { name: 'Risk', value: Math.round(probability * 100) },
+    { name: 'Safe', value: Math.round((1 - probability) * 100) },
   ];
 
   return (
@@ -66,14 +67,20 @@ export default function PredictionDashboard({ place, onBack }) {
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     setLoading(true);
-    // TODO: Replace with real API call → fetch(`/api/predict?place=${place}&month=${selectedMonth}`)
-    fetchPredictions(place, selectedMonth).then((result) => {
-      setData(result);
-      setLoading(false);
-    });
+    setError(null);
+    fetchPredictions(place, selectedMonth)
+      .then((result) => {
+        setData(result);
+        setLoading(false);
+      })
+      .catch((err) => {
+        setError(err.message);
+        setLoading(false);
+      });
   }, [place, selectedMonth]);
 
   const isLive = selectedMonth === currentMonth;
@@ -81,12 +88,12 @@ export default function PredictionDashboard({ place, onBack }) {
   // Cumulative pie data
   const cumulativeData = data
     ? Object.entries(data.risks)
-        .filter(([key]) => key !== 'cumulative')
-        .map(([key, val]) => ({
-          name: DISASTER_LABELS[key],
-          value: Math.round(val.probability * 100),
-          color: RISK_COLORS[val.level],
-        }))
+      .filter(([key]) => key !== 'cumulative')
+      .map(([key, val]) => ({
+        name: DISASTER_LABELS[key],
+        value: Math.round(val.probability * 100),
+        color: RISK_COLORS[val.level],
+      }))
     : [];
 
   return (
@@ -132,14 +139,29 @@ export default function PredictionDashboard({ place, onBack }) {
         <div className="flex justify-center py-20">
           <div className="w-12 h-12 border-4 border-brand-500/30 border-t-brand-500 rounded-full animate-spin" />
         </div>
+      ) : error ? (
+        <div className="glass-card p-8 text-center">
+          <span className="text-4xl block mb-4">⚠️</span>
+          <h3 className="text-xl font-bold text-white mb-2">Failed to load predictions</h3>
+          <p className="text-slate-400 mb-6">{error}</p>
+          <button
+            onClick={() => setSelectedMonth(selectedMonth)}
+            className="px-6 py-2.5 bg-brand-500 text-white rounded-xl font-bold hover:bg-brand-600 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
       ) : (
         <div className="space-y-8">
           {/* Cumulative Risk Chart */}
           <div className="glass-card p-6">
             <h3 className="text-lg font-bold text-white mb-1">Cumulative Risk Overview</h3>
-            <p className="text-xs text-slate-400 mb-4">
-              Combined risk for {MONTHS[selectedMonth]} — Overall: <RiskBadge level={data.risks.cumulative.level} />
-            </p>
+            <div className="flex items-center gap-2 mb-4">
+              <p className="text-xs text-slate-400">
+                Combined risk for {MONTHS[selectedMonth]} — Overall:
+              </p>
+              <RiskBadge level={data.risks.cumulative.level} />
+            </div>
             <div className="h-64 md:h-72">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -177,14 +199,15 @@ export default function PredictionDashboard({ place, onBack }) {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {Object.entries(data.risks)
               .filter(([key]) => key !== 'cumulative')
-              .map(([key, val]) => (
-                <MiniPieChart
-                  key={key}
-                  title={DISASTER_LABELS[key]}
-                  icon={DISASTER_ICONS[key]}
-                  probability={val.probability}
-                  level={val.level}
-                />
+              .map(([key, val], idx) => (
+                <div key={key} className="slide-up" style={{ animationDelay: `${(idx + 1) * 100}ms` }}>
+                  <MiniPieChart
+                    title={DISASTER_LABELS[key]}
+                    icon={DISASTER_ICONS[key]}
+                    probability={val.probability}
+                    level={val.level}
+                  />
+                </div>
               ))}
           </div>
 
@@ -194,11 +217,11 @@ export default function PredictionDashboard({ place, onBack }) {
               🛡️ Safety Precautions
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {Object.entries(data.safety).map(([key, measures]) => {
+              {Object.entries(data.safety).map(([key, measures], idx) => {
                 const level = data.risks[key].level;
-                const borderColor = level === 'High' ? 'border-red-500/40' : level === 'Medium' ? 'border-yellow-500/40' : 'border-green-500/40';
+                const borderColor = level === 'HIGH' ? 'border-red-500/40' : level === 'MODERATE' ? 'border-yellow-500/40' : 'border-green-500/40';
                 return (
-                  <div key={key} className={`border-l-4 ${borderColor} bg-slate-800/50 rounded-r-xl p-4`}>
+                  <div key={key} className={`border-l-4 ${borderColor} bg-slate-800/50 rounded-r-xl p-4 slide-up`} style={{ animationDelay: `${(idx + 5) * 100}ms` }}>
                     <div className="flex items-center gap-2 mb-2">
                       <span className="text-lg">{DISASTER_ICONS[key]}</span>
                       <span className="font-semibold text-sm text-white">{DISASTER_LABELS[key]}</span>

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { fetchPlaces } from '../data/mockData';
+import { fetchPlaces } from '../services/api';
+
 
 export default function PlaceSelector({ state, onSelect, onBack }) {
   const [places, setPlaces] = useState([]);

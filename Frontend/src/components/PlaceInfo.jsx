@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { fetchPlaceInfo } from '../data/mockData';
+import { fetchPlaceInfo } from '../services/api';
 
 export default function PlaceInfo({ place, onBack }) {
   const [info, setInfo] = useState(null);

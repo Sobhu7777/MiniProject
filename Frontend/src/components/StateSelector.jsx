@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { fetchStates } from '../data/mockData';
+import { fetchStates } from '../services/api';
 
 export default function StateSelector({ region, onSelect, onBack }) {
   const [states, setStates] = useState([]);
