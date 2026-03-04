@@ -1,0 +1,41 @@
+# ── Dependencies ──
+node_modules/
+
+# ── Build output ──
+dist/
+build/
+
+# ── Vite cache ──
+.vite/
+
+# ── Environment variables ──
+.env
+.env.local
+.env.*.local
+
+# ── Editor / IDE ──
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ── OS generated ──
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ── Logs ──
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ── Coverage & testing ──
+coverage/
+*.lcov
+
+# ── Misc ──
+*.local
+.eslintcache
