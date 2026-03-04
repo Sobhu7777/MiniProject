@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, Response
 from fastapi.middleware.cors import CORSMiddleware
 from src.predictor import DisasterPredictor
 import uvicorn
@@ -45,6 +45,32 @@ async def get_predictions(place: str, month: int):
         # Ensure the response uses the 0-indexed month from the request
         results["month"] = month
         return results
+    except Exception as e:
+        return {"error": str(e)}
+
+@app.get("/api/forecast/16day")
+async def get_16day_forecast(place: str):
+    """
+    Returns a daily 16-day forecast for all disasters.
+    """
+    try:
+        results = predictor.forecast_16day(place)
+        return results
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {"error": str(e)}
+
+@app.get("/api/forecast/plot/{disaster}")
+async def get_forecast_plot(disaster: str, place: str):
+    """
+    Returns a Matplotlib-generated plot for the 16-day forecast of a specific disaster.
+    """
+    try:
+        plot_bytes = predictor.get_forecast_plot(place, disaster)
+        if not plot_bytes:
+            return {"error": f"No plot available for {disaster} at {place}"}
+        return Response(content=plot_bytes, media_type="image/png")
     except Exception as e:
         return {"error": str(e)}
 

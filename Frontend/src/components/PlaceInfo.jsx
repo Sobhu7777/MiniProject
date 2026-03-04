@@ -78,27 +78,56 @@ export default function PlaceInfo({ place, onBack }) {
 
           {/* Top Tourist Spots */}
           <div className="glass-card p-6">
-            <h3 className="text-lg font-bold text-white mb-4">🏆 Top Tourist Spots</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
+              🏆 Top Tourist Spots
+            </h3>
+            <div className="grid grid-cols-1 gap-4">
               {info.topSpots.map((spot, idx) => (
                 <a
                   key={idx}
                   href={spot.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-3 bg-slate-800/60 border border-surface-border/20 rounded-xl p-4
-                             hover:border-brand-500/40 hover:bg-surface-hover/30 transition-all duration-200 group"
+                  className="bg-slate-800/40 border border-surface-border/20 rounded-2xl p-5 hover:border-brand-500/40 transition-all duration-300 group block"
                   id={`spot-${idx}`}
                 >
-                  <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-brand-600/20 text-brand-300 font-bold text-sm shrink-0">
-                    {idx + 1}
-                  </span>
-                  <span className="text-sm font-medium text-white group-hover:text-brand-300 transition-colors">
-                    {spot.name}
-                  </span>
-                  <svg className="w-4 h-4 text-slate-500 ml-auto group-hover:text-brand-400 transition-colors shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                  </svg>
+                  <div className="flex flex-col md:flex-row md:items-start gap-4">
+                    <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-brand-600/20 text-brand-300 font-bold text-lg shrink-0">
+                      {idx + 1}
+                    </div>
+
+                    <div className="flex-grow">
+                      <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                        <h4 className="text-white font-bold group-hover:text-brand-300 transition-colors">
+                          {spot.name}
+                        </h4>
+                        <div className="flex items-center gap-1.5 bg-yellow-500/10 text-yellow-500 px-2 py-1 rounded-lg text-xs font-bold border border-yellow-500/20">
+                          ⭐ {spot.rating}
+                        </div>
+                      </div>
+
+                      <p className="text-sm text-slate-400 mb-4 leading-relaxed">
+                        {spot.description}
+                      </p>
+
+                      <div className="flex flex-wrap gap-4 text-xs text-slate-500">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-brand-400">🕒</span>
+                          <span>Opens: {spot.openingTime}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-brand-400">🚪</span>
+                          <span>Closes: {spot.closingTime}</span>
+                        </div>
+                        <div className="ml-auto flex items-center gap-1 text-brand-400 group-hover:text-brand-300 font-semibold transition-colors">
+                          View on Maps
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </a>
               ))}
             </div>
