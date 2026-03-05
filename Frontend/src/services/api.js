@@ -90,21 +90,12 @@ export async function fetchPredictions(place, month) {
 
 export async function fetchWeatherForecast(place) {
     try {
-<<<<<<< HEAD
-        const response = await fetch(`${API_BASE_URL}/forecast/16day?place=${encodeURIComponent(place)}`);
-=======
         const response = await fetch(`${API_BASE_URL}/predict_16day?place=${encodeURIComponent(place)}`);
->>>>>>> 159e84c (done monthly , daily api  place info)
         if (!response.ok) {
             throw new Error(`API error: ${response.statusText}`);
         }
         const data = await response.json();
         if (data.error) throw new Error(data.error);
-<<<<<<< HEAD
-        return data; // returns { place, forecast_days, data: [{date, disasters: {landslide: {prob, level}, ...}}, ...] }
-    } catch (error) {
-        console.error('Error fetching 16-day forecast:', error);
-=======
 
         return data.forecast.map((item, i) => {
             const dateObj = new Date(item.date);
@@ -129,7 +120,6 @@ export async function fetchWeatherForecast(place) {
         });
     } catch (error) {
         console.error('Error fetching weather forecast:', error);
->>>>>>> 159e84c (done monthly , daily api  place info)
         throw error;
     }
 }
@@ -341,6 +331,127 @@ const PLACE_DATA = {
             { name: 'St. Francis Church', description: 'One of the oldest European churches in India.', openingTime: '07:00 AM', closingTime: '06:00 PM', rating: '4.5', url: '#' },
             { name: 'Jew Town', description: 'Center of spice trade with antique shops and a synagogue.', openingTime: '10:00 AM', closingTime: '07:00 PM', rating: '4.5', url: '#' },
             { name: 'Cherai Beach', description: 'Peaceful beach known for calmness and shallow waters.', openingTime: '00:00 AM', closingTime: '11:59 PM', rating: '4.6', url: '#' }
+        ]
+    },
+    'Chamoli': {
+        description: 'Chamoli is the second largest district of Uttarakhand, known for its temples, trekking trails, and the world-famous Valley of Flowers.',
+        bestTime: 'May to June, September to October',
+        elevation: '2,502m',
+        highlights: ['Valley of Flowers', 'Hemkund Sahib', 'Trekking', 'Pilgrimage'],
+        topSpots: [
+            { name: 'Valley of Flowers', description: 'A UNESCO World Heritage site known for its meadows of endemic alpine flowers.', openingTime: '07:00 AM', closingTime: '05:00 PM', rating: '4.8', url: '#' },
+            { name: 'Badrinath Temple', description: 'One of the Char Dham pilgrimage sites dedicated to Lord Vishnu.', openingTime: '04:30 AM', closingTime: '09:00 PM', rating: '4.9', url: '#' },
+            { name: 'Auli', description: 'A premier ski destination with panoramic views of the Himalayas.', openingTime: '00:00 AM', closingTime: '11:59 PM', rating: '4.7', url: '#' }
+        ]
+    },
+    'Pithoragarh': {
+        description: 'Pithoragarh is the easternmost district of Uttarakhand, often called "Little Kashmir" for its scenic beauty.',
+        bestTime: 'April to June, September to November',
+        elevation: '1,645m',
+        highlights: ['Panchachuli Peaks', 'Pithoragarh Fort', 'Lakes', 'Valley Views'],
+        topSpots: [
+            { name: 'Pithoragarh Fort', description: 'A historic fort offering a panoramic view of the valley.', openingTime: '09:00 AM', closingTime: '06:00 PM', rating: '4.2', url: '#' },
+            { name: 'Chandak Hill', description: 'A beautiful hilltop offering stunning views of the Himalayas.', openingTime: '00:00 AM', closingTime: '11:59 PM', rating: '4.3', url: '#' }
+        ]
+    },
+    'Kedarnath': {
+        description: 'Kedarnath is a sacred town in the Himalayas, home to the ancient Kedarnath Temple, one of the holiest shrines in Hinduism.',
+        bestTime: 'May to June, September to October',
+        elevation: '3,583m',
+        highlights: ['Ancient Temple', 'Glacial Views', 'Spirituality', 'Trekking'],
+        topSpots: [
+            { name: 'Kedarnath Temple', description: 'A revered Shiva temple with extreme spiritual significance.', openingTime: '04:00 AM', closingTime: '09:00 PM', rating: '5.0', url: '#' },
+            { name: 'Vasuki Tal', description: 'A high-altitude glacial lake with crystal clear waters.', openingTime: '07:00 AM', closingTime: '04:00 PM', rating: '4.8', url: '#' }
+        ]
+    },
+    'Varanasi': {
+        description: 'One of the oldest continuously inhabited cities in the world, Varanasi is the spiritual capital of India.',
+        bestTime: 'October to March',
+        elevation: '81m',
+        highlights: ['Ganga Aarti', 'Ancient Ghats', 'Temples', 'Silk Weaving'],
+        topSpots: [
+            { name: 'Dashashwamedh Ghat', description: 'The main and most spectacular ghat on the Ganges.', openingTime: '00:00 AM', closingTime: '11:59 PM', rating: '4.8', url: '#' },
+            { name: 'Kashi Vishwanath Temple', description: 'One of the most famous Hindu temples dedicated to Lord Shiva.', openingTime: '03:00 AM', closingTime: '11:00 PM', rating: '4.7', url: '#' }
+        ]
+    },
+    'Udaipur': {
+        description: 'Udaipur, the "City of Lakes", is a historic capital of the Mewar kingdom, known for its grand palaces and lakes.',
+        bestTime: 'September to March',
+        elevation: '423m',
+        highlights: ['Lake Pichola', 'City Palace', 'Heritage Hotels', 'Royal History'],
+        topSpots: [
+            { name: 'City Palace', description: 'A grand complex of palaces overlooking Lake Pichola.', openingTime: '09:30 AM', closingTime: '05:30 PM', rating: '4.6', url: '#' },
+            { name: 'Lake Pichola', description: 'An artificial freshwater lake with island palaces.', openingTime: '09:00 AM', closingTime: '06:00 PM', rating: '4.7', url: '#' }
+        ]
+    },
+    'Panaji': {
+        description: 'The capital of Goa, Panaji is known for its Portuguese colonial architecture, riverside walks, and relaxed vibe.',
+        bestTime: 'October to April',
+        elevation: '7m',
+        highlights: ['Colonial Architecture', 'Riverside', 'Casinos', 'Art Galleries'],
+        topSpots: [
+            { name: 'Our Lady of the Immaculate Conception Church', description: 'A beautiful white baroque church in the heart of the city.', openingTime: '09:00 AM', closingTime: '05:00 PM', rating: '4.5', url: '#' },
+            { name: 'Fontainhas', description: 'The Latin Quarter of Panaji with colorful old houses.', openingTime: '00:00 AM', closingTime: '11:59 PM', rating: '4.6', url: '#' }
+        ]
+    },
+    'Kolkata': {
+        description: 'The "City of Joy", Kolkata is the cultural capital of India, known for its grand colonial architecture and festivals.',
+        bestTime: 'October to March',
+        elevation: '9m',
+        highlights: ['Victoria Memorial', 'Howrah Bridge', 'Street Food', 'Arts'],
+        topSpots: [
+            { name: 'Victoria Memorial', description: 'A massive white marble building dedicated to Queen Victoria.', openingTime: '10:00 AM', closingTime: '05:00 PM', rating: '4.6', url: '#' },
+            { name: 'Howrah Bridge', description: 'An iconic cantilever bridge over the Hooghly River.', openingTime: '00:00 AM', closingTime: '11:59 PM', rating: '4.7', url: '#' }
+        ]
+    },
+    'Bhubaneswar': {
+        description: 'The "Temple City of India", Bhubaneswar is an ancient city known for its hundreds of Hindu temples.',
+        bestTime: 'October to March',
+        elevation: '45m',
+        highlights: ['Ancient Temples', 'Caves', 'Zoo', 'Odissi Dance'],
+        topSpots: [
+            { name: 'Lingaraj Temple', description: 'The largest and most prominent temple in Bhubaneswar.', openingTime: '05:00 AM', closingTime: '09:00 PM', rating: '4.7', url: '#' },
+            { name: 'Udayagiri and Khandagiri Caves', description: 'Partly natural and partly artificial caves of archaeological importance.', openingTime: '09:00 AM', closingTime: '06:00 PM', rating: '4.4', url: '#' }
+        ]
+    },
+    'Puri': {
+        description: 'Puri is a coastal city on the Bay of Bengal, famous for the Jagannath Temple and its golden beaches.',
+        bestTime: 'October to March',
+        elevation: '0m',
+        highlights: ['Jagannath Temple', 'Golden Beach', 'Rath Yatra', 'Sand Art'],
+        topSpots: [
+            { name: 'Jagannath Temple', description: 'An important Hindu temple dedicated to Jagannath.', openingTime: '05:00 AM', closingTime: '11:00 PM', rating: '4.8', url: '#' },
+            { name: 'Puri Beach', description: 'A popular beach destination with golden sands.', openingTime: '00:00 AM', closingTime: '11:59 PM', rating: '4.4', url: '#' }
+        ]
+    },
+    'Patna': {
+        description: 'One of the oldest continuously inhabited places in the world, Patna is the capital of Bihar and a historical hub.',
+        bestTime: 'October to March',
+        elevation: '53m',
+        highlights: ['Historical Sites', 'Museums', 'Ganges River', 'Pilgrimage'],
+        topSpots: [
+            { name: 'Golghar', description: 'A massive granary with a panoramic view of the city and the Ganges.', openingTime: '10:00 AM', closingTime: '05:00 PM', rating: '4.1', url: '#' },
+            { name: 'Patna Museum', description: 'Showcasing artifacts from the Mauryan and Gupta periods.', openingTime: '10:30 AM', closingTime: '04:30 PM', rating: '4.2', url: '#' }
+        ]
+    },
+    'Ranchi': {
+        description: 'The "City of Waterfalls", Ranchi is the capital of Jharkhand and is surrounded by hills and forests.',
+        bestTime: 'September to March',
+        elevation: '651m',
+        highlights: ['Waterfalls', 'Rock Garden', 'Temples', 'Hills'],
+        topSpots: [
+            { name: 'Hundru Falls', description: 'One of the most famous waterfalls in Jharkhand.', openingTime: '08:00 AM', closingTime: '05:00 PM', rating: '4.5', url: '#' },
+            { name: 'Rock Garden', description: 'A beautiful garden carved out of rocks with sculptures.', openingTime: '09:00 AM', closingTime: '07:00 PM', rating: '4.3', url: '#' }
+        ]
+    },
+    'Visakhapatnam': {
+        description: 'The "Jewel of the East Coast", Visakhapatnam is a port city known for its beaches, hillocks, and submarine museum.',
+        bestTime: 'October to March',
+        elevation: '900m',
+        highlights: ['Beaches', 'Submarine Museum', 'Hill Views', 'Port city'],
+        topSpots: [
+            { name: 'Rishikonda Beach', description: 'A scenic beach known for its golden sands and water sports.', openingTime: '00:00 AM', closingTime: '11:59 PM', rating: '4.5', url: '#' },
+            { name: 'INS Kursura Submarine Museum', description: 'A real submarine converted into a museum on the beach.', openingTime: '02:00 PM', closingTime: '08:00 PM', rating: '4.8', url: '#' }
         ]
     }
 };
