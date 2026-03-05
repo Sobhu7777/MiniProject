@@ -9,7 +9,7 @@ const CONDITION_ICONS = { Sunny: '☀️', Cloudy: '☁️', Rainy: '🌧️', S
 const DISASTER_ICONS = { thunderstorm: '⛈️', windstorm: '🌪️', flood: '🌊', landslide: '🏔️' };
 
 export default function WeatherForecast({ place, onBack }) {
-  const [forecast, setForecast] = useState(null);
+  const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [graphModal, setGraphModal] = useState({ isOpen: false, type: '', title: '', variable: '', color: '' });
   const [dataModal, setDataModal] = useState({ isOpen: false, type: '' });
@@ -405,49 +405,7 @@ export default function WeatherForecast({ place, onBack }) {
         </div>
       )}
 
-      {/* Raw Data Modal */}
-      {rawData && (
-        <div
-          className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
-          onClick={() => setRawData(null)}
-        >
-          <div
-            className="glass-card max-w-2xl w-full p-6 animate-scale-in max-h-[80vh] flex flex-col"
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-base font-bold text-white uppercase tracking-wide">
-                {DISASTER_CONFIG[activeDisaster]?.icon} {DISASTER_CONFIG[activeDisaster]?.label} — Daily Logs
-              </h3>
-              <button
-                onClick={() => setRawData(null)}
-                className="w-7 h-7 flex items-center justify-center rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm transition-colors"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="overflow-y-auto flex-1 rounded-xl border border-slate-800 bg-slate-950/80 divide-y divide-slate-900">
-              {rawData.map((entry, i) => {
-                const lvl = entry.level
-                  ? entry.level.charAt(0).toUpperCase() + entry.level.slice(1).toLowerCase()
-                  : 'Low';
-                return (
-                  <div key={i} className="flex items-center justify-between px-4 py-2.5 text-xs">
-                    <span className="text-indigo-400 font-mono">{entry.date}</span>
-                    <RiskBadge level={lvl} probability={entry.probability} />
-                  </div>
-                );
-              })}
-            </div>
-            <button
-              onClick={() => setTipsModal({ isOpen: false, disaster: '' })}
-              className="w-full py-3 bg-brand-600 text-white rounded-xl font-bold hover:bg-brand-500 transition-colors"
-            >
-              Got it, thanks!
-            </button>
-          </div>
-        </div>
-      )}
+
     </section>
   );
 }

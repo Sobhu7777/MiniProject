@@ -14,7 +14,17 @@ export default function PlaceInfo({ place, onBack }) {
     });
   }, [place]);
 
-  const spots = TOURIST_SPOTS[place] || [];
+  // Use TOURIST_SPOTS from dedicated data file. Fall back to topSpots from api.js
+  const rawSpots = TOURIST_SPOTS[place];
+  const spots = (rawSpots && rawSpots.length > 0)
+    ? rawSpots
+    : (info?.topSpots || []).map(s => ({
+      name: s.name,
+      open: s.openingTime,
+      close: s.closingTime,
+      rating: parseFloat(s.rating),
+      mapsUrl: s.url
+    }));
 
   return (
     <section className="fade-in max-w-4xl mx-auto px-4">
