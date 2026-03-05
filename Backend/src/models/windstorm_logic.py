@@ -24,6 +24,20 @@ class WindstormModel:
         
         return self.model.score(X_test, y_test)
 
+    def predict_raw(self, features_dict):
+        if self.model is None:
+            raise ValueError("Model not trained")
+            
+        features = pd.DataFrame([features_dict])
+        prob = self.model.predict_proba(features)[0][1]
+        # Soften extreme confidence as per notebook
+        prob = 0.85 * prob + 0.075
+        
+        return {
+            "probability": round(float(prob), 3),
+            "level": risk_level(prob)
+        }
+
     def predict(self, place, month, df_wind):
         if self.model is None:
             raise ValueError("Model not trained")

@@ -24,30 +24,23 @@ async def root():
     return {"message": "TravelSafe API is running"}
 
 @app.get("/api/predict")
-async def get_predictions(place: str, month: int):
+async def get_monthly_predictions(place: str, month: int):
     """
-    Returns disaster risk predictions for a given place and month.
-    month is 0-indexed from frontend (0=Jan, 11=Dec).
-    Backend logic expects 1-indexed (1=Jan, 12=Dec).
+    Returns monthly disaster risk predictions for a given place and month.
+    Frontend sends 0-indexed month, backend expects 1-indexed.
     """
-    # Convert 0-indexed to 1-indexed
-    backend_month = month + 1
-    
     try:
-        results = predictor.predict_all_monthly(place, backend_month)
-        if results is None:
+        results = predictor.predict_all_monthly(place, month + 1)
+        if not results:
             return {
                 "place": place,
-                "month": month,
-                "error": "No data available for this location and month"
+                "error": "No data available for this location/month"
             }
-            
-        # Ensure the response uses the 0-indexed month from the request
-        results["month"] = month
         return results
     except Exception as e:
         return {"error": str(e)}
 
+<<<<<<< HEAD:Backend/app.py
 @app.get("/api/forecast/16day")
 async def get_16day_forecast(place: str):
     """
@@ -71,6 +64,24 @@ async def get_forecast_plot(disaster: str, place: str):
         if not plot_bytes:
             return {"error": f"No plot available for {disaster} at {place}"}
         return Response(content=plot_bytes, media_type="image/png")
+=======
+@app.get("/api/predict_16day")
+async def get_16day_predictions(place: str):
+    """
+    Returns 16-day integrated disaster risk predictions for a given place.
+    """
+    try:
+        results = predictor.integrate_16day_forecast(place)
+        if not results:
+            return {
+                "place": place,
+                "error": "No data available for this location"
+            }
+        return {
+            "place": place,
+            "forecast": results
+        }
+>>>>>>> 159e84c (done monthly , daily api  place info):Backend/main.py
     except Exception as e:
         return {"error": str(e)}
 

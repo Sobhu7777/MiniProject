@@ -90,15 +90,46 @@ export async function fetchPredictions(place, month) {
 
 export async function fetchWeatherForecast(place) {
     try {
+<<<<<<< HEAD
         const response = await fetch(`${API_BASE_URL}/forecast/16day?place=${encodeURIComponent(place)}`);
+=======
+        const response = await fetch(`${API_BASE_URL}/predict_16day?place=${encodeURIComponent(place)}`);
+>>>>>>> 159e84c (done monthly , daily api  place info)
         if (!response.ok) {
             throw new Error(`API error: ${response.statusText}`);
         }
         const data = await response.json();
         if (data.error) throw new Error(data.error);
+<<<<<<< HEAD
         return data; // returns { place, forecast_days, data: [{date, disasters: {landslide: {prob, level}, ...}}, ...] }
     } catch (error) {
         console.error('Error fetching 16-day forecast:', error);
+=======
+
+        return data.forecast.map((item, i) => {
+            const dateObj = new Date(item.date);
+            return {
+                day: i + 1,
+                date: dateObj.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }),
+                fullDate: item.date,
+                weather: {
+                    tempMax: item.weather.tempMax,
+                    tempMin: item.weather.tempMin,
+                    precipitation: item.weather.precipitation,
+                    rain_3day: item.weather.rain_3day,
+                    windSpeed: item.weather.windSpeed,
+                    humidity: item.weather.humidity,
+                    dewpoint: item.weather.dewpoint,
+                    pressure: item.weather.pressure,
+                    cape: item.weather.cape,
+                    condition: item.weather.condition
+                },
+                risks: item.risks
+            };
+        });
+    } catch (error) {
+        console.error('Error fetching weather forecast:', error);
+>>>>>>> 159e84c (done monthly , daily api  place info)
         throw error;
     }
 }

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import requests
 import pandas as pd
 import numpy as np
@@ -5,6 +6,10 @@ import calendar
 from datetime import datetime, timedelta
 import io
 import matplotlib.pyplot as plt
+=======
+import os
+from datetime import datetime
+>>>>>>> 159e84c (done monthly , daily api  place info)
 from src.data_utils import load_model, load_landslide_data, load_flood_data, load_windstorm_data, load_thunderstorm_data, risk_level
 from src.models.landslide_logic import LandslideModel
 from src.models.flood_logic import FloodModel
@@ -161,6 +166,7 @@ class DisasterPredictor:
     def predict_thunderstorm(self, features_row):
         return self.thunderstorm.predict(features_row)
 
+<<<<<<< HEAD
     # =========================================================================
     # 16-DAY FORECAST LOGIC
     # =========================================================================
@@ -444,10 +450,383 @@ class DisasterPredictor:
         plt.close()
         buf.seek(0)
         return buf.getvalue()
+=======
+    def get_landslide_api_data(self, place):
+        from src.data_utils import place_coordinates
+        import requests
+        if place not in place_coordinates:
+            raise ValueError("Coordinates not found for selected place.")
+        lat, lon = place_coordinates[place]
+        url = (
+            "https://api.open-meteo.com/v1/forecast"
+            f"?latitude={lat}&longitude={lon}"
+            "&daily=precipitation_sum&forecast_days=16&timezone=auto"
+        )
+        response = requests.get(url)
+        data = response.json()
+        dates = data["daily"]["time"]
+        rainfall_raw = data["daily"]["precipitation_sum"]
+        rainfall = [float(r) if r is not None else 0.0 for r in rainfall_raw]
+        return list(zip(dates, rainfall))
+
+    def predict_landslide_16day(self, place):
+        # Get static place features
+        place_data = self.ls_df[self.ls_df["place"] == place]
+        if place_data.empty:
+            return []
+        static = place_data.iloc[0]
+        
+        api_forecast = self.get_landslide_api_data(place)
+        daily_results = []
+        for date, rain in api_forecast:
+            month_of_day = datetime.strptime(date, "%Y-%m-%d").month
+            features = {
+                "month": month_of_day,
+                "rainfall_mm": rain,
+                "elevation_m": static["elevation_m"],
+                "slope_deg": static["slope_deg"],
+                "soil_type": static["soil_type"]
+            }
+            res = self.landslide.predict_raw(features)
+            daily_results.append({
+                "date": date,
+                "rainfall": round(rain, 2),
+                "probability": res["probability"],
+                "level": res["level"]
+            })
+        return daily_results
+
+    def get_flood_api_data(self, place):
+        from src.data_utils import place_coordinates
+        import requests
+        import numpy as np
+        import pandas as pd
+        lat, lon = place_coordinates[place]
+        url = (
+            f"https://api.open-meteo.com/v1/forecast?"
+            f"latitude={lat}&longitude={lon}"
+            f"&daily=precipitation_sum,temperature_2m_max"
+            f"&hourly=relative_humidity_2m"
+            f"&forecast_days=16&timezone=auto"
+        )
+        response = requests.get(url)
+        data = response.json()
+        dates = data["daily"]["time"]
+        rainfall = [float(x) if x is not None else 0.0 for x in data["daily"]["precipitation_sum"]]
+        temperature = [float(x) if x is not None else 0.0 for x in data["daily"]["temperature_2m_max"]]
+        hourly_df = pd.DataFrame({
+            "time": pd.to_datetime(data["hourly"]["time"]),
+            "humidity": data["hourly"]["relative_humidity_2m"]
+        })
+        hourly_df["date"] = hourly_df["time"].dt.date
+        daily_humidity_map = hourly_df.groupby("date")["humidity"].mean().to_dict()
+        humidity = []
+        for d_str in dates:
+            d_obj = datetime.strptime(d_str, "%Y-%m-%d").date()
+            humidity.append(float(daily_humidity_map.get(d_obj, 0.0)))
+        return dates, rainfall, temperature, humidity
+
+    def predict_flood_16day(self, place):
+        # Get static place features
+        place_data = self.fl_df[self.fl_df["place"] == place]
+        if place_data.empty:
+            return []
+        static = place_data.iloc[0]
+        
+        dates, rainfall_api, temperature_api, humidity_api = self.get_flood_api_data(place)
+        
+        results = []
+        for i in range(len(dates)):
+            date = dates[i]
+            month_of_day = datetime.strptime(date, "%Y-%m-%d").month
+            rain_3day = sum(rainfall_api[max(0, i-2):i+1])
+            
+            features = {
+                "month": month_of_day,
+                "rainfall_mm": rainfall_api[i],
+                "rainfall_3day": rain_3day,
+                "temperature_c": temperature_api[i],
+                "humidity_percent": humidity_api[i],
+                "elevation_m": static["elevation_m"],
+                "slope_deg": static["slope_deg"],
+                "soil_type": static["soil_type"]
+            }
+            
+            res = self.flood.predict_raw(features)
+            results.append({
+                "date": date,
+                "rainfall_3day": round(rain_3day, 2),
+                "probability": res["probability"],
+                "level": res["level"]
+            })
+        return results
+
+    def get_thunder_api_data(self, place):
+        from src.data_utils import place_coordinates
+        import requests
+        import pandas as pd
+        lat, lon = place_coordinates[place]
+        url = (
+            f"https://api.open-meteo.com/v1/forecast"
+            f"?latitude={lat}&longitude={lon}"
+            f"&daily=temperature_2m_max,precipitation_sum"
+            f"&hourly=dewpoint_2m,surface_pressure,wind_speed_10m,cape"
+            f"&forecast_days=16&timezone=auto"
+        )
+        response = requests.get(url)
+        data = response.json()
+        daily_dates = data["daily"]["time"]
+        daily_temp = data["daily"]["temperature_2m_max"]
+        daily_rain = data["daily"]["precipitation_sum"]
+        hourly_df = pd.DataFrame({
+            "time": pd.to_datetime(data["hourly"]["time"]),
+            "dewpoint": data["hourly"]["dewpoint_2m"],
+            "pressure": data["hourly"]["surface_pressure"],
+            "wind": data["hourly"]["wind_speed_10m"],
+            "cape": data["hourly"]["cape"]
+        })
+        hourly_df["date"] = hourly_df["time"].dt.date
+        agg = hourly_df.groupby("date").agg({
+            "dewpoint": "mean", "pressure": "mean", "wind": "mean", "cape": "max"
+        }).to_dict("index")
+        results = []
+        for i, date_str in enumerate(daily_dates):
+            d_obj = datetime.strptime(date_str, "%Y-%m-%d").date()
+            day_agg = agg.get(d_obj, {"dewpoint":0,"pressure":0,"wind":0,"cape":0})
+            results.append({
+                "date": date_str,
+                "2m_temperature": daily_temp[i],
+                "2m_dewpoint_temperature": day_agg["dewpoint"],
+                "surface_pressure": day_agg["pressure"],
+                "10m_wind_speed": day_agg["wind"],
+                "total_precipitation": daily_rain[i],
+                "cape": day_agg["cape"]
+            })
+        return results
+
+    def predict_thunder_16day(self, place):
+        api_data = self.get_thunder_api_data(place)
+        results = []
+        for day in api_data:
+            features = {
+                "2m_temperature": day["2m_temperature"],
+                "2m_dewpoint_temperature": day["2m_dewpoint_temperature"],
+                "surface_pressure": day["surface_pressure"],
+                "10m_wind_speed": day["10m_wind_speed"],
+                "total_precipitation": day["total_precipitation"],
+                "cape": day["cape"]
+            }
+            prob, _ = self.thunderstorm.predict(features)
+            results.append({
+                "date": day["date"],
+                "probability": round(float(prob), 3),
+                "level": risk_level(prob)
+            })
+        return results
+
+    def get_wind_api_data(self, place):
+        from src.data_utils import place_coordinates
+        import requests
+        import pandas as pd
+        lat, lon = place_coordinates[place]
+        url = (
+            f"https://api.open-meteo.com/v1/forecast"
+            f"?latitude={lat}&longitude={lon}"
+            f"&daily=wind_speed_10m_max,temperature_2m_max"
+            f"&hourly=relative_humidity_2m"
+            f"&forecast_days=16&timezone=auto"
+        )
+        response = requests.get(url)
+        data = response.json()
+        dates = data["daily"]["time"]
+        wind_speed = [float(x) if x is not None else 0.0 for x in data["daily"]["wind_speed_10m_max"]]
+        temp = [float(x) if x is not None else 0.0 for x in data["daily"]["temperature_2m_max"]]
+        h_df = pd.DataFrame({
+            "time": pd.to_datetime(data["hourly"]["time"]),
+            "hum": data["hourly"]["relative_humidity_2m"]
+        })
+        h_df["date"] = h_df["time"].dt.date
+        hum_map = h_df.groupby("date")["hum"].mean().to_dict()
+        humidity = [float(hum_map.get(datetime.strptime(d, "%Y-%m-%d").date(), 0.0)) for d in dates]
+        return dates, wind_speed, temp, humidity
+
+    def predict_wind_16day(self, place):
+        dates, wind_api, temp_api, hum_api = self.get_wind_api_data(place)
+        
+        results = []
+        for i in range(len(dates)):
+            date = dates[i]
+            month = datetime.strptime(date, "%Y-%m-%d").month
+            wind_3day_cum = sum(wind_api[max(0, i-2):i+1])
+            
+            features = {
+                "month": month,
+                "WindSpeed_km_per_hr": wind_api[i],
+                "Temperature_C": temp_api[i],
+                "Humidity_percent": hum_api[i],
+                "WindSpeed_3day_cum": wind_3day_cum
+            }
+            
+            res = self.windstorm.predict_raw(features)
+            results.append({
+                "date": date,
+                "probability": res["probability"],
+                "level": res["level"]
+            })
+        return results
+
+    def get_comprehensive_weather_api_data(self, place):
+        from src.data_utils import place_coordinates
+        import requests
+        import pandas as pd
+        
+        lat, lon = place_coordinates[place]
+        # Consolidate all needed fields for all models
+        url = (
+            f"https://api.open-meteo.com/v1/forecast?"
+            f"latitude={lat}&longitude={lon}"
+            f"&daily=precipitation_sum,temperature_2m_max,temperature_2m_min,wind_speed_10m_max"
+            f"&hourly=relative_humidity_2m,dewpoint_2m,surface_pressure,wind_speed_10m,cape"
+            f"&forecast_days=16&timezone=auto"
+        )
+        response = requests.get(url)
+        data = response.json()
+        
+        daily = data["daily"]
+        hourly = data["hourly"]
+        
+        dates = daily["time"]
+        precip = [float(x) if x is not None else 0.0 for x in daily["precipitation_sum"]]
+        temp_max = [float(x) if x is not None else 0.0 for x in daily["temperature_2m_max"]]
+        temp_min = [float(x) if x is not None else 0.0 for x in daily["temperature_2m_min"]]
+        wind_max = [float(x) if x is not None else 0.0 for x in daily["wind_speed_10m_max"]]
+        
+        h_df = pd.DataFrame({
+            "time": pd.to_datetime(hourly["time"]),
+            "humidity": hourly["relative_humidity_2m"],
+            "dewpoint": hourly["dewpoint_2m"],
+            "pressure": hourly["surface_pressure"],
+            "wind": hourly["wind_speed_10m"],
+            "cape": hourly["cape"]
+        })
+        h_df["date"] = h_df["time"].dt.date
+        
+        daily_agg = h_df.groupby("date").agg({
+            "humidity": "mean",
+            "dewpoint": "mean",
+            "pressure": "mean",
+            "wind": "mean",
+            "cape": "max"
+        }).to_dict("index")
+        
+        results = []
+        for i, d_str in enumerate(dates):
+            d_obj = datetime.strptime(d_str, "%Y-%m-%d").date()
+            agg = daily_agg.get(d_obj, {"humidity": 70, "dewpoint": 15, "pressure": 1010, "wind": 10, "cape": 0})
+            
+            results.append({
+                "date": d_str,
+                "temp_max": temp_max[i],
+                "temp_min": temp_min[i],
+                "precipitation": precip[i],
+                "wind_speed": wind_max[i],
+                "humidity": round(float(agg["humidity"]), 1),
+                "dewpoint": round(float(agg["dewpoint"]), 1),
+                "pressure": round(float(agg["pressure"]), 1),
+                "wind_hourly_avg": round(float(agg["wind"]), 1),
+                "cape": round(float(agg["cape"]), 1)
+            })
+        return results
+
+    def integrate_16day_forecast(self, place):
+        # 1. Get static data
+        ls_static = self.ls_df[self.ls_df["place"] == place].iloc[0] if not self.ls_df[self.ls_df["place"] == place].empty else None
+        fl_static = self.fl_df[self.fl_df["place"] == place].iloc[0] if not self.fl_df[self.fl_df["place"] == place].empty else None
+        
+        if ls_static is None or fl_static is None:
+            return []
+
+        # 2. Get all weather data for 16 days
+        weather_data = self.get_comprehensive_weather_api_data(place)
+        
+        # Prepare lists for 3-day window calculations
+        precip_list = [d["precipitation"] for d in weather_data]
+        wind_list = [d["wind_speed"] for d in weather_data]
+        
+        forecast = []
+        for i, day in enumerate(weather_data):
+            month = datetime.strptime(day["date"], "%Y-%m-%d").month
+            
+            # Landslide
+            ls_res = self.landslide.predict_raw({
+                "month": month,
+                "rainfall_mm": day["precipitation"],
+                "elevation_m": ls_static["elevation_m"],
+                "slope_deg": ls_static["slope_deg"],
+                "soil_type": ls_static["soil_type"]
+            })
+            
+            # Flood
+            rain_3day = sum(precip_list[max(0, i-2):i+1])
+            fl_res = self.flood.predict_raw({
+                "month": month,
+                "rainfall_mm": day["precipitation"],
+                "rainfall_3day": rain_3day,
+                "temperature_c": day["temp_max"],
+                "humidity_percent": day["humidity"],
+                "elevation_m": fl_static["elevation_m"],
+                "slope_deg": fl_static["slope_deg"],
+                "soil_type": fl_static["soil_type"]
+            })
+            
+            # Thunderstorm
+            ts_prob, _ = self.thunderstorm.predict({
+                "2m_temperature": day["temp_max"],
+                "2m_dewpoint_temperature": day["dewpoint"],
+                "surface_pressure": day["pressure"],
+                "10m_wind_speed": day["wind_hourly_avg"],
+                "total_precipitation": day["precipitation"],
+                "cape": day["cape"]
+            })
+            
+            # Windstorm
+            wind_3day_cum = sum(wind_list[max(0, i-2):i+1])
+            ws_res = self.windstorm.predict_raw({
+                "month": month,
+                "WindSpeed_km_per_hr": day["wind_speed"],
+                "Temperature_C": day["temp_max"],
+                "Humidity_percent": day["humidity"],
+                "WindSpeed_3day_cum": wind_3day_cum
+            })
+            
+            forecast.append({
+                "date": day["date"],
+                "weather": {
+                    "tempMax": day["temp_max"],
+                    "tempMin": day["temp_min"],
+                    "precipitation": day["precipitation"],
+                    "rain_3day": round(rain_3day, 2),
+                    "windSpeed": day["wind_speed"],
+                    "wind_3day": round(wind_3day_cum, 2),
+                    "humidity": day["humidity"],
+                    "dewpoint": day["dewpoint"],
+                    "pressure": day["pressure"],
+                    "cape": day["cape"],
+                    "condition": "Stormy" if ts_prob > 0.4 else "Rainy" if day["precipitation"] > 5 else "Cloudy" if day["precipitation"] > 0 else "Sunny"
+                },
+                "risks": {
+                    "landslide": ls_res,
+                    "flood": fl_res,
+                    "thunderstorm": {"probability": round(float(ts_prob), 3), "level": risk_level(ts_prob)},
+                    "windstorm": ws_res
+                }
+            })
+        return forecast
+>>>>>>> 159e84c (done monthly , daily api  place info)
 
 if __name__ == "__main__":
     # Sample usage
     predictor = DisasterPredictor()
-    res = predictor.predict_all_monthly("Munnar", 8)
+    res = predictor.integrate_16day_forecast("Munnar")
     import json
-    print(json.dumps(res, indent=2))
+    print(json.dumps(res[0], indent=2))

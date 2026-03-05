@@ -25,6 +25,22 @@ class LandslideModel:
         
         return self.model.score(X_test, y_test)
 
+    def predict_raw(self, features_dict):
+        if self.model is None:
+            raise ValueError("Model not trained")
+            
+        features = pd.DataFrame([features_dict])
+        if "soil_type" in features.columns:
+            features = features.copy()
+            features["soil_type"] = self.le.transform(features["soil_type"])
+            
+        prob = self.model.predict_proba(features)[0][1]
+        
+        return {
+            "probability": round(float(prob), 3),
+            "level": risk_level(prob)
+        }
+
     def predict(self, place, month, df):
         if self.model is None:
             raise ValueError("Model not trained")
