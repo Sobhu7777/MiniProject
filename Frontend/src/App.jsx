@@ -10,8 +10,8 @@ import PlaceInfo from './components/PlaceInfo';
 export default function App() {
   // Selection state
   const [selectedRegion, setSelectedRegion] = useState(null);
-  const [selectedState, setSelectedState]   = useState(null);
-  const [selectedPlace, setSelectedPlace]   = useState(null);
+  const [selectedState, setSelectedState] = useState(null);
+  const [selectedPlace, setSelectedPlace] = useState(null);
 
   // View state: 'selection' | 'prediction' | 'weather' | 'placeInfo'
   const [activeView, setActiveView] = useState('selection');
@@ -68,21 +68,28 @@ export default function App() {
     setActiveView('selection');
   };
 
+  const handleReset = () => {
+    setSelectedRegion(null);
+    setSelectedState(null);
+    setSelectedPlace(null);
+    setActiveView('selection');
+  };
+
   // ── Determine which selection step to show ──
   const selectionStep = !selectedRegion
     ? 'region'
     : !selectedState
-    ? 'state'
-    : !selectedPlace
-    ? 'place'
-    : 'actions';
+      ? 'state'
+      : !selectedPlace
+        ? 'place'
+        : 'actions';
 
   return (
     <div className="min-h-screen bg-surface text-slate-200">
       {/* ── Header ── */}
       <header className="sticky top-0 z-50 bg-surface/80 backdrop-blur-lg border-b border-surface-border/30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 cursor-pointer" onClick={handleReset}>
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center shadow-lg shadow-brand-600/20">
               <span className="text-lg">🛡️</span>
             </div>
