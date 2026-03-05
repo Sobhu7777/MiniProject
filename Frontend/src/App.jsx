@@ -42,6 +42,13 @@ export default function App() {
     setActiveView('selection');
   };
 
+  const handleDirectSelect = (result) => {
+    setSelectedRegion(result.region);
+    setSelectedState(result.state);
+    setSelectedPlace(result.place);
+    setActiveView('selection');
+  };
+
   const handleAction = (view) => {
     setActiveView(view);
   };
@@ -136,7 +143,7 @@ export default function App() {
         {activeView === 'selection' && (
           <>
             {selectionStep === 'region' && (
-              <RegionSelector onSelect={handleSelectRegion} />
+              <RegionSelector onSelect={handleSelectRegion} onSelectPlace={handleDirectSelect} />
             )}
             {selectionStep === 'state' && (
               <StateSelector region={selectedRegion} onSelect={handleSelectState} onBack={handleBackToRegions} />

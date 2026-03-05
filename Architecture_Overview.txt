@@ -1,0 +1,68 @@
+# TravelSafe — Backend Architecture & Frontend Integration Overview
+
+This document provides a high-level explanation of how the TravelSafe system works, from the machine learning models in the backend to the interactive UI in the frontend.
+
+---
+
+## 1. Backend Architecture (Python / FastAPI)
+
+The backend is responsible for processing data, running machine learning inferences, and serving results via a REST API.
+
+### Core Components:
+- **FastAPI / Uvicorn (`app.py`):**
+  - This is the entry point. It defines the "routes" (URL endpoints) that the frontend can talk to.
+  - It handles CORS (Cross-Origin Resource Sharing) so the browser allows the frontend to request data from the backend.
+- **Disaster Predictor (`src/predictor.py`):**
+  - The "brain" of the backend. It coordinates between the ML models and external data.
+  - It contains the logic for the **16-Day Forecast**, which fetches live weather data from the **Open-Meteo API** and feeds it into our models.
+- **ML Models (`src/models/` & `models/`):**
+  - We use **Random Forest Classifier** models for 4 disaster types: Landslide, Flood, Thunderstorm, and Windstorm.
+  - These models were trained on historical environmental data. They take features (like rainfall, temperature, slope, etc.) and output a "Probability Score" (0 to 1).
+- **Data Utilities (`src/data_utils.py`):**
+  - Handles loading the trained `.pkl` model files and reading the static CSV datasets stored in the `data/` folder.
+
+---
+
+## 2. The Prediction Process (Data Flow)
+
+### A. Monthly Prediction (Static/Historical):
+1. Frontend sends: `Place` and `Month`.
+2. Backend looks up historical averages for that place/month in our CSV datasets.
+3. Backend feeds these averages into the 4 ML models.
+4. Backend converts the 0.0–1.0 probability into a Risk Level (LOW, MODERATE, HIGH).
+
+### B. 16-Day Forecast (Live/Dynamic):
+1. Frontend sends: `Place`.
+2. Backend fetches **Live 16-day Weather Forecast** (Temp, Rain, Wind, etc.) from the Open-Meteo API for that specific location.
+3. For each of the next 16 days, the backend feeds that day's weather into our ML models.
+4. Backend returns a list of 16 days, each with specific weather stats and calculated risk levels.
+
+---
+
+## 3. Frontend Integration (React / Vite)
+
+The frontend is a modern React application that visualizes the backend's data.
+
+### How it talks to the Backend:
+- **API Service Layer (`src/services/api.js`):**
+  - This file uses the standard browser `fetch()` API to make requests to `http://localhost:8000`.
+  - It acts as the "middleman" — it defines functions like `fetchWeatherForecast(place)` that the UI components call.
+- **UI Components:**
+  - **`PredictionDashboard.jsx`**: Calls the backend when you select a month to show the gauge charts.
+  - **`WeatherForecast.jsx`**: Calls the backend to get the 16-day daily list and renders the cards and charts.
+- **State Management:**
+  - When a component (like the Dashboard) mounts, it uses a `useEffect` hook to trigger a "fetch" call.
+  - While waiting, it shows a "Loading" spinner.
+  - Once data arrives, it saves it in React `state` (`useState`), which causes the page to automatically rerender with the new data.
+
+---
+
+## 4. Summary of Key Files
+
+| File | Language | Role |
+|---|---|---|
+| `Backend/app.py` | Python | The API Web Server |
+| `Backend/src/predictor.py` | Python | Integration of ML models + External API |
+| `Backend/models/*.pkl` | Binary | The actual "Smart" trained brain of the models |
+| `Frontend/src/services/api.js` | JS | Bridge between Frontend and Backend |
+| `Frontend/src/App.jsx` | JSX | The main UI structure and navigation |

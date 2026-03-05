@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { REGIONS } from '../services/api';
+import SearchPlace from './SearchPlace';
 
-export default function RegionSelector({ onSelect }) {
+export default function RegionSelector({ onSelect, onSelectPlace }) {
   const [hoveredId, setHoveredId] = useState(null);
 
   return (
@@ -12,6 +13,8 @@ export default function RegionSelector({ onSelect }) {
         </h2>
         <p className="text-slate-400 mt-2 text-sm">Choose a region to explore safe tourist destinations</p>
       </div>
+
+      <SearchPlace onSelectPlace={onSelectPlace} />
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4 max-w-3xl mx-auto">
         {REGIONS.map((region, idx) => (

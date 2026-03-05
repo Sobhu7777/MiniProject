@@ -73,6 +73,37 @@ export async function fetchPlaces(stateName) {
     });
 }
 
+export async function searchPlace(query) {
+    return new Promise((resolve) => {
+        const results = [];
+        const normalizedQuery = query.toLowerCase().trim();
+
+        if (normalizedQuery.length < 2) {
+            resolve([]);
+            return;
+        }
+
+        // Search through all regions, states and places to find matches
+        for (const [regionId, stateList] of Object.entries(STATES_BY_REGION)) {
+            const region = REGIONS.find(r => r.id === regionId);
+            for (const stateName of stateList) {
+                const places = PLACES_BY_STATE[stateName] || [];
+                for (const placeName of places) {
+                    if (placeName.toLowerCase().includes(normalizedQuery)) {
+                        results.push({
+                            place: placeName,
+                            state: stateName,
+                            region: region
+                        });
+                    }
+                }
+            }
+        }
+
+        setTimeout(() => resolve(results), 200);
+    });
+}
+
 export async function fetchPredictions(place, month) {
     try {
         const response = await fetch(`${API_BASE_URL}/predict?place=${encodeURIComponent(place)}&month=${month}`);
