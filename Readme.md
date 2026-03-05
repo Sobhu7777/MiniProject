@@ -1,170 +1,150 @@
-# 📍 Project Roadmap: Multi‑Disaster Risk Prediction System
+# 🛡️ TravelSafe — Multi-Disaster Risk Prediction System
 
-This roadmap describes the **end‑to‑end workflow** for building a machine‑learning‑based disaster risk prediction system, from data collection to final deployment and presentation.
-
----
-
-## 🔷 PHASE 1: Problem Framing (Foundation)
-
-### Step 1: Define the Problem Scope
-- **Disasters Covered**
-  - Thunderstorm
-  - Windstorm
-  - Flood
-  - Landslide
-
-- **Prediction Type**
-  - Thunderstorm & Windstorm → Real‑time probability‑based prediction
-  - Flood & Landslide → Historical / susceptibility‑based prediction
-
-- **Model Output**
-  - Probability score between **0 and 1**
-  - Converted into **Low / Medium / High risk** using rule‑based thresholds
+A full-stack web application that predicts disaster risks (Landslide, Flood, Thunderstorm, Windstorm) for popular travel destinations across India. Built with **React** and **FastAPI**, it uses **Random Forest** machine learning models trained on historical environmental data.
 
 ---
 
-## 🔷 PHASE 2: Data Collection
+## ✨ Features
 
-### Step 2: Collect Feature Datasets
-Multiple datasets are combined instead of relying on a single source.
-
-- **Meteorological Data**
-  - ERA5 Reanalysis (temperature, humidity, wind, pressure, CAPE)
-  - NOAA GSOD (daily weather parameters)
-
-- **Rainfall / Flood Data**
-  - IMD gridded rainfall datasets
-  - Kaggle India rainfall datasets
-
-- **Landslide Data**
-  - NASA Global Landslide Catalog
-  - DEM‑derived slope and elevation (optional)
-
-**Output:**  
-Clean datasets with `Date + Location + Features`
+- **Monthly Disaster Prediction** — Select a destination and month to get real-time risk assessments for 4 disaster types
+- **16-Day Forecast** — Integrated daily disaster forecast using live weather data from the Open-Meteo API
+- **Place Info** — Detailed location profiles with elevation, best time to visit, highlights, and top tourist spots with Google Maps links
+- **Safety Precautions** — Context-aware safety tips based on predicted risk levels
+- **Interactive Graphs & Data Tables** — Visualize 16-day trends for rainfall, wind speed, CAPE, and more
+- **30+ Indian Destinations** — Covers hill stations, coastal cities, and heritage towns across all regions
 
 ---
 
-### Step 3: Collect Label Data
-Labels indicate whether a disaster event occurred.
+## 🧰 Tech Stack
 
-- Thunderstorm / Windstorm → Event occurred (1) or not (0)
-- Flood → Flood occurred (1) or not (0)
-- Landslide → Landslide occurred (1) or not (0)
+### Frontend
+| Technology | Purpose |
+|---|---|
+| **React 19** | UI framework |
+| **Vite 6** | Build tool & dev server |
+| **Tailwind CSS 3** | Utility-first styling |
+| **Recharts** | Charts & data visualization |
 
-> ⚠️ Labels are **binary**, not Low/Medium/High.
+### Backend
+| Technology | Purpose |
+|---|---|
+| **FastAPI** | REST API framework |
+| **Uvicorn** | ASGI server |
+| **scikit-learn** | Random Forest ML models |
+| **Pandas / NumPy** | Data processing |
+| **Joblib** | Model serialization |
+| **Requests** | External API calls (Open-Meteo) |
 
----
-
-## 🔷 PHASE 3: Dataset Construction
-
-### Step 4: Merge Features and Labels
-Create the final ML dataset by joining data sources using **date and location**.
-
-Example structure:
-Date | Location | Temp | Humidity | Wind | Pressure | Rainfall | Label
-
-
----
-
-### Step 5: Data Cleaning & Imbalance Handling
-- Handle missing values
-- Normalize / scale features
-- Address class imbalance using SMOTE or class weighting
-- Remove duplicates and noise
+### External APIs
+| API | Purpose |
+|---|---|
+| **Open-Meteo Forecast API** | 16-day weather forecast data (precipitation, temperature, wind, humidity, CAPE, pressure) |
 
 ---
 
-## 🔷 PHASE 4: Model Development
+## 📁 Project Structure
 
-### Step 6: Model Selection (One per Disaster)
-- Thunderstorm → Random Forest / XGBoost
-- Windstorm → Random Forest Regressor / XGBoost
-- Flood → XGBoost / Logistic Regression
-- Landslide → Random Forest (susceptibility modeling)
-
-All models:
-- Binary classification
-- Output probability between **0 and 1**
-
----
-
-### Step 7: Training & Validation
-- Train‑test split: 80/20
-- Evaluation metrics:
-  - Accuracy
-  - Precision & Recall
-  - ROC‑AUC
-- Save trained models for inference
-
----
-
-## 🔷 PHASE 5: Risk Interpretation Layer
-
-### Step 8: Probability to Risk Mapping
-Convert model output into human‑readable risk levels.
-
-Example thresholds:
-
-0.00 – 0.30 → Low Risk
-0.30 – 0.60 → Medium Risk
-0.60 – 1.00 → High Risk
-
-
-> This layer is **rule‑based**, not machine learning.
-
----
-
-## 🔷 PHASE 6: Calendar‑Based Prediction Logic
-
-### Step 9: Calendar Integration
-When a user selects a date:
-
-- **Thunderstorm & Windstorm**
-  - Fetch recent or real‑time weather features
-  - Predict probability → map to risk level
-
-- **Flood**
-  - Use historical rainfall trends for the selected date/month
-  - Predict probability → map to risk level
-
-- **Landslide**
-  - Use static susceptibility score for the location
-  - Map score to risk level
+```
+MiniProject/
+├── Backend/
+│   ├── app.py                  # FastAPI application entry point
+│   ├── requirements.txt        # Python dependencies
+│   ├── models/                 # Trained ML model files (.pkl)
+│   ├── data/                   # CSV datasets (landslide, flood, windstorm, thunderstorm)
+│   └── src/
+│       ├── predictor.py        # Core prediction logic & 16-day forecast integration
+│       ├── data_utils.py       # Data loading & helper utilities
+│       ├── train_models.py     # Model training script
+│       └── models/
+│           ├── landslide_logic.py
+│           ├── flood_logic.py
+│           ├── thunderstorm_logic.py
+│           └── windstorm_logic.py
+├── Frontend/
+│   ├── package.json
+│   ├── vite.config.js
+│   └── src/
+│       ├── App.jsx             # Main app with navigation & routing
+│       ├── services/
+│       │   └── api.js          # API calls & static place data
+│       ├── data/
+│       │   └── touristSpots.js # Tourist attraction data
+│       └── components/
+│           ├── RegionSelector.jsx
+│           ├── StateSelector.jsx
+│           ├── PlaceSelector.jsx
+│           ├── ActionButtons.jsx
+│           ├── PredictionDashboard.jsx
+│           ├── WeatherForecast.jsx
+│           └── PlaceInfo.jsx
+└── Readme.md
+```
 
 ---
 
-## 🔷 PHASE 7: Output & Visualization Layer
+## 🚀 Getting Started
 
-### Step 10: User‑Facing Outputs
-- Interactive disaster‑predictive calendar
-- Map overlays (Green / Orange / Red zones)
-- Travel safety summaries
-- Integrated Disaster Risk Score (optional)
+### Prerequisites
+- **Python 3.10+**
+- **Node.js 18+**
 
----
+### Backend Setup
+```bash
+cd Backend
+pip install -r requirements.txt
+python app.py
+```
+The API server starts at `http://localhost:8000`.
 
-## 🔷 PHASE 8: Evaluation & Justification
-
-### Step 11: System Validation
-- Compare predicted risks with historical disaster events
-- Analyze confusion matrix and ROC curves
-- Clearly document limitations and assumptions
-
----
-
-## 🔷 PHASE 9: Documentation & Presentation
-
-### Step 12: Final Deliverables
-- Dataset sources and descriptions
-- System architecture diagram
-- Model workflow and risk‑mapping logic
-- UI mockups or screenshots
-- Limitations and future scope
+### Frontend Setup
+```bash
+cd Frontend
+npm install
+npm run dev
+```
+The dev server starts at `http://localhost:5173`.
 
 ---
 
-## 🧠 One‑Line Summary
-> Historical environmental data is used to train binary classification models that estimate disaster probabilities, which are then converted into interpretable risk levels and visualized through a calendar‑based decision support system.
+## 🔌 API Endpoints
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/predict?place={place}&month={month}` | Monthly disaster risk prediction |
+| `GET` | `/api/predict_16day?place={place}` | 16-day integrated forecast |
+
+### Example Request
+```
+GET /api/predict?place=Munnar&month=5
+GET /api/predict_16day?place=Varanasi
+```
 
 ---
+
+## 🤖 ML Pipeline
+
+1. **Data Collection** — Historical meteorological & disaster event data (ERA5, IMD, NASA Landslide Catalog)
+2. **Feature Engineering** — Date-based features, rolling rainfall windows, wind speed aggregation
+3. **Model Training** — Random Forest classifiers trained per disaster type (80/20 train-test split)
+4. **Inference** — Models output probability (0–1), mapped to risk levels:
+   - `0.00 – 0.30` → **Low Risk** 🟢
+   - `0.30 – 0.60` → **Moderate Risk** 🟡
+   - `0.60 – 1.00` → **High Risk** 🔴
+5. **16-Day Forecast** — Live weather data from Open-Meteo is fed into trained models for daily risk predictions
+
+---
+
+## 📍 Supported Destinations
+
+| Region | Locations |
+|---|---|
+| **South** | Munnar, Wayanad, Coorg, Nilgiris, Thiruvananthapuram, Chennai, Kochi |
+| **North** | Srinagar, Chamoli, Pithoragarh, Kedarnath, Manali, Shimla, Mussoorie, Varanasi |
+| **East** | Darjeeling, Gangtok, Shillong, Guwahati, Kolkata, Bhubaneswar, Puri, Patna, Ranchi |
+| **West** | Mumbai, Udaipur, Panaji, Visakhapatnam |
+
+---
+
+## 📜 License
+
+This project is for educational purposes as part of a Mini Project.
