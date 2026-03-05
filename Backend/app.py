@@ -40,31 +40,6 @@ async def get_monthly_predictions(place: str, month: int):
     except Exception as e:
         return {"error": str(e)}
 
-<<<<<<< HEAD:Backend/app.py
-@app.get("/api/forecast/16day")
-async def get_16day_forecast(place: str):
-    """
-    Returns a daily 16-day forecast for all disasters.
-    """
-    try:
-        results = predictor.forecast_16day(place)
-        return results
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return {"error": str(e)}
-
-@app.get("/api/forecast/plot/{disaster}")
-async def get_forecast_plot(disaster: str, place: str):
-    """
-    Returns a Matplotlib-generated plot for the 16-day forecast of a specific disaster.
-    """
-    try:
-        plot_bytes = predictor.get_forecast_plot(place, disaster)
-        if not plot_bytes:
-            return {"error": f"No plot available for {disaster} at {place}"}
-        return Response(content=plot_bytes, media_type="image/png")
-=======
 @app.get("/api/predict_16day")
 async def get_16day_predictions(place: str):
     """
@@ -81,7 +56,6 @@ async def get_16day_predictions(place: str):
             "place": place,
             "forecast": results
         }
->>>>>>> 159e84c (done monthly , daily api  place info):Backend/main.py
     except Exception as e:
         return {"error": str(e)}
 
