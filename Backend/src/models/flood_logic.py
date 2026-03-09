@@ -32,9 +32,31 @@ class FloodModel:
         
         return self.model.score(X_test, y_test)
 
+    def _sanitize_soil_type(self, soil_type):
+        if not soil_type:
+            return "Clayey"
+        s = str(soil_type).lower()
+        mapping = {
+            "clayey": "Clayey",
+            "clay": "Clayey",
+            "sandy": "Sandy",
+            "rocky": "Laterite",
+            "laterite": "Laterite",
+            "mountain soil": "Laterite",
+            "alluvial": "Alluvial"
+        }
+        # Get the class names from label encoder to be sure
+        known_classes = self.le_soil.classes_
+        sanitized = mapping.get(s, known_classes[0])
+        return sanitized
+
     def predict_raw(self, features_dict):
         if self.model is None:
             raise ValueError("Model not trained")
+            
+        features_dict = features_dict.copy()
+        if "soil_type" in features_dict:
+            features_dict["soil_type"] = self._sanitize_soil_type(features_dict["soil_type"])
             
         features = pd.DataFrame([features_dict])
         if "soil_type" in features.columns:

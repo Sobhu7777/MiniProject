@@ -3,42 +3,12 @@ import io
 import base64
 import matplotlib.pyplot as plt
 from datetime import datetime
-from src.data_utils import load_model, load_landslide_data, load_flood_data, load_windstorm_data, load_thunderstorm_data, risk_level
+from src.data_utils import load_model, risk_level
 from src.models.landslide_logic import LandslideModel
 from src.models.flood_logic import FloodModel
 from src.models.thunderstorm_logic import ThunderstormModel
 from src.models.windstorm_logic import WindstormModel
-
-PLACE_COORDINATES = {
-    "Munnar": (10.0889, 77.0595),
-    "Wayanad": (11.6854, 76.1320),
-    "Coorg": (12.4244, 75.7382),
-    "Nilgiris": (11.4102, 76.6950),
-    "Darjeeling": (27.0360, 88.2627),
-    "Gangtok": (27.3389, 88.6065),
-    "Shillong": (25.5788, 91.8933),
-    "Guwahati": (26.1445, 91.7362),
-    "Srinagar": (34.0837, 74.7973),
-    "Chamoli": (30.4042, 79.3319),
-    "Pithoragarh": (29.5820, 80.2182),
-    "Manali": (32.2432, 77.1892),
-    "Shimla": (31.1048, 77.1734),
-    "Mussoorie": (30.4598, 78.0644),
-    "Thiruvananthapuram": (8.5241, 76.9366),
-    "Mumbai": (19.0760, 72.8777),
-    "Chennai": (13.0827, 80.2707),
-    "Kochi": (9.9312, 76.2673),
-    "Kolkata": (22.5726, 88.3639),
-    "Varanasi": (25.3176, 82.9739),
-    "Panaji": (15.4909, 73.8278),
-    "Udaipur": (24.5854, 73.7125),
-    "Patna": (25.5941, 85.1376),
-    "Visakhapatnam": (17.6868, 83.2185),
-    "Ranchi": (23.3441, 85.3096),
-    "Bhubaneswar": (20.2961, 85.8245),
-    "Puri": (19.8135, 85.8312),
-    "Kedarnath": (30.7352, 79.0669),
-}
+from src.static_data import PLACE_COORDINATES, LOCATION_DATA
 
 class DisasterPredictor:
     def __init__(self, models_dir="models"):
@@ -49,7 +19,6 @@ class DisasterPredictor:
         self.windstorm = WindstormModel()
         
         self._load_all_models()
-        self._load_reference_data()
 
     def _load_all_models(self):
         try:
@@ -67,21 +36,78 @@ class DisasterPredictor:
         except Exception as e:
             print(f"Error loading models: {e}")
 
-    def _load_reference_data(self):
-        # Load data for historical context (used in monthly predictions)
-        self.ls_df = load_landslide_data("landslide.csv")
-        self.fl_df = load_flood_data("flood.csv")
-        self.wi_df = load_windstorm_data("windstorm.csv")
-        self.ts_df = load_thunderstorm_data("thunderstorm.csv")
+    def _get_static_features(self, place):
+        """
+        Pools geographic features (elevation, slope, soil) from any available 
+        model section for the given place in LOCATION_DATA.
+        """
+        loc_data = LOCATION_DATA.get(place, {})
+        # Try landslide first, then flood
+        features = loc_data.get("landslide", {}).copy()
+        flood_features = loc_data.get("flood", {})
+        
+        # Fill missing values from flood data if available
+        for key in ["elevation_m", "slope_deg", "soil_type"]:
+            if key not in features and key in flood_features:
+                features[key] = flood_features[key]
+        
+        return features if features else None
 
     def predict_all_monthly(self, place, month):
         # risks dict to match frontend expected keys
         risks = {}
         
-        risks["landslide"] = self.landslide.predict(place, month, self.ls_df)
-        risks["flood"] = self.flood.predict(place, month, self.fl_df)
-        risks["windstorm"] = self.windstorm.predict(place, month, self.wi_df)
-        risks["thunderstorm"] = self.predict_thunderstorm_monthly(place, month)
+        # Get baseline data for the place/month
+        place_data = LOCATION_DATA.get(place, {})
+        baselines = place_data.get("baselines", {}).get(str(month))
+        
+        if not baselines:
+            return None
+
+        # Robust static features lookup
+        static_features = self._get_static_features(place)
+        if not static_features:
+            # Fallback if no geographic data exists (e.g. city only has baseline weather)
+            static_features = {"elevation_m": 0, "slope_deg": 0, "soil_type": "Other"}
+
+        # Prepare features for each model from baselines
+        ls_features = {
+            "month": month,
+            "rainfall_mm": baselines["ls_rain"],
+            **static_features
+        }
+        risks["landslide"] = self.landslide.predict_raw(ls_features)
+
+        fl_features = {
+            "month": month,
+            "rainfall_mm": baselines["fl_rain"],
+            "rainfall_3day": baselines["fl_rain"] * 0.5, # Approximation for monthly
+            "temperature_c": baselines["fl_temp"],
+            "humidity_percent": baselines["fl_hum"],
+            **static_features
+        }
+        risks["flood"] = self.flood.predict_raw(fl_features)
+
+        wi_features = {
+            "month": month,
+            "WindSpeed_km_per_hr": baselines["wi_speed"],
+            "Temperature_C": baselines["wi_temp"],
+            "Humidity_percent": baselines["wi_hum"],
+            "WindSpeed_3day_cum": baselines["wi_3day"]
+        }
+        risks["windstorm"] = self.windstorm.predict_raw(wi_features)
+        
+        # Simplified thunderstorm monthly (historical)
+        ts_features = {
+            "2m_temperature": baselines["fl_temp"], # fallback
+            "2m_dewpoint_temperature": baselines["fl_temp"] - 5,
+            "surface_pressure": 1010,
+            "10m_wind_speed": baselines["wi_speed"],
+            "total_precipitation": baselines["fl_rain"],
+            "cape": 500
+        }
+        ts_prob, _ = self.thunderstorm.predict(ts_features)
+        risks["thunderstorm"] = {"probability": round(float(ts_prob), 3), "level": risk_level(ts_prob)}
         
         # Filter out None results if any model doesn't have data for that place/month
         risks = {k: v for k, v in risks.items() if v is not None}
@@ -140,16 +166,19 @@ class DisasterPredictor:
         return result_safety
 
     def predict_thunderstorm_monthly(self, place, month):
-        # risks dict to match frontend expected keys
-        # We need to make sure we handle month correctly (frontend 0-indexed passed to backend 1-indexed)
-        # However, predictor.py currently expects the month as it is in the CSV (1-indexed)
-        data = self.ts_df[(self.ts_df["place"] == place) & (self.ts_df["month"] == month)]
-        if data.empty:
+        baselines = LOCATION_DATA.get(place, {}).get("baselines", {}).get(str(month))
+        if not baselines:
             return None
         
-        # Average features for the month
-        means = data[self.thunderstorm.feature_cols].mean()
-        prob, _ = self.thunderstorm.predict(means.to_dict())
+        features = {
+            "2m_temperature": baselines["fl_temp"],
+            "2m_dewpoint_temperature": baselines["fl_temp"] - 5,
+            "surface_pressure": 1010,
+            "10m_wind_speed": baselines["wi_speed"],
+            "total_precipitation": baselines["fl_rain"],
+            "cape": 500
+        }
+        prob, _ = self.thunderstorm.predict(features)
         
         return {
             "probability": round(float(prob), 3),
@@ -178,11 +207,10 @@ class DisasterPredictor:
         return list(zip(dates, rainfall))
 
     def predict_landslide_16day(self, place):
-        # Get static place features
-        place_data = self.ls_df[self.ls_df["place"] == place]
-        if place_data.empty:
+        # Get pooled static features
+        static = self._get_static_features(place)
+        if not static:
             return []
-        static = place_data.iloc[0]
         
         api_forecast = self.get_landslide_api_data(place)
         daily_results = []
@@ -191,9 +219,7 @@ class DisasterPredictor:
             features = {
                 "month": month_of_day,
                 "rainfall_mm": rain,
-                "elevation_m": static["elevation_m"],
-                "slope_deg": static["slope_deg"],
-                "soil_type": static["soil_type"]
+                **static
             }
             res = self.landslide.predict_raw(features)
             daily_results.append({
@@ -235,11 +261,10 @@ class DisasterPredictor:
         return dates, rainfall, temperature, humidity
 
     def predict_flood_16day(self, place):
-        # Get static place features
-        place_data = self.fl_df[self.fl_df["place"] == place]
-        if place_data.empty:
+        # Get pooled static features
+        static = self._get_static_features(place)
+        if not static:
             return []
-        static = place_data.iloc[0]
         
         dates, rainfall_api, temperature_api, humidity_api = self.get_flood_api_data(place)
         
@@ -255,9 +280,7 @@ class DisasterPredictor:
                 "rainfall_3day": rain_3day,
                 "temperature_c": temperature_api[i],
                 "humidity_percent": humidity_api[i],
-                "elevation_m": static["elevation_m"],
-                "slope_deg": static["slope_deg"],
-                "soil_type": static["soil_type"]
+                **static
             }
             
             res = self.flood.predict_raw(features)
@@ -447,9 +470,8 @@ class DisasterPredictor:
         return results
 
     def integrate_16day_forecast(self, place):
-        # 1. Get static data
-        ls_static = self.ls_df[self.ls_df["place"] == place].iloc[0] if not self.ls_df[self.ls_df["place"] == place].empty else None
-        fl_static = self.fl_df[self.fl_df["place"] == place].iloc[0] if not self.fl_df[self.fl_df["place"] == place].empty else None
+        # 1. Get static data via robust lookup
+        static = self._get_static_features(place)
         
         # 2. Get all weather data for 16 days
         weather_data = self.get_comprehensive_weather_api_data(place)
@@ -462,30 +484,26 @@ class DisasterPredictor:
         for i, day in enumerate(weather_data):
             month = datetime.strptime(day["date"], "%Y-%m-%d").month
             
-            # Landslide - fallback to LOW if data missing
-            if ls_static is not None:
+            # Landslide
+            if static is not None:
                 ls_res = self.landslide.predict_raw({
                     "month": month,
                     "rainfall_mm": day["precipitation"],
-                    "elevation_m": ls_static["elevation_m"],
-                    "slope_deg": ls_static["slope_deg"],
-                    "soil_type": ls_static["soil_type"]
+                    **static
                 })
             else:
                 ls_res = {"probability": 0.01, "level": "LOW"}
             
-            # Flood - fallback to LOW if data missing
+            # Flood
             rain_3day = sum(precip_list[max(0, i-2):i+1])
-            if fl_static is not None:
+            if static is not None:
                 fl_res = self.flood.predict_raw({
                     "month": month,
                     "rainfall_mm": day["precipitation"],
                     "rainfall_3day": rain_3day,
                     "temperature_c": day["temp_max"],
                     "humidity_percent": day["humidity"],
-                    "elevation_m": fl_static["elevation_m"],
-                    "slope_deg": fl_static["slope_deg"],
-                    "soil_type": fl_static["soil_type"]
+                    **static
                 })
             else:
                 fl_res = {"probability": 0.01, "level": "LOW"}

@@ -25,9 +25,28 @@ class LandslideModel:
         
         return self.model.score(X_test, y_test)
 
+    def _sanitize_soil_type(self, soil_type):
+        if not soil_type:
+            return "clay"
+        s = str(soil_type).lower()
+        mapping = {
+            "clayey": "clay",
+            "rocky": "rocky",
+            "sandy": "sandy",
+            "loam": "loam",
+            "alluvial": "alluvial",
+            "laterite": "clay", # Fallback for unknown
+            "mountain soil": "rocky"
+        }
+        return mapping.get(s, "clay")
+
     def predict_raw(self, features_dict):
         if self.model is None:
             raise ValueError("Model not trained")
+            
+        features_dict = features_dict.copy()
+        if "soil_type" in features_dict:
+            features_dict["soil_type"] = self._sanitize_soil_type(features_dict["soil_type"])
             
         features = pd.DataFrame([features_dict])
         if "soil_type" in features.columns:
