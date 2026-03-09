@@ -59,5 +59,18 @@ async def get_16day_predictions(place: str):
     except Exception as e:
         return {"error": str(e)}
 
+@app.get("/api/disaster_graph")
+async def get_disaster_graph(place: str, disaster: str):
+    """
+    Returns a base64 encoded PNG image of the disaster risk probability graph.
+    """
+    try:
+        img_base64 = predictor.generate_disaster_plot(place, disaster)
+        if not img_base64:
+            return {"error": "Failed to generate graph"}
+        return {"image": img_base64}
+    except Exception as e:
+        return {"error": str(e)}
+
 if __name__ == "__main__":
     uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)

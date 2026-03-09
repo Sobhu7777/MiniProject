@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { fetchWeatherForecast } from '../services/api';
+import { fetchWeatherForecast, fetchDisasterGraph } from '../services/api';
 import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Legend, Area, ComposedChart
@@ -11,7 +11,10 @@ const DISASTER_ICONS = { thunderstorm: '⛈️', windstorm: '🌪️', flood: '�
 export default function WeatherForecast({ place, onBack }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [graphModal, setGraphModal] = useState({ isOpen: false, type: '', title: '', variable: '', color: '' });
+  const [graphModal, setGraphModal] = useState({
+    isOpen: false, type: '', title: '', variable: '', color: '',
+    isProbability: true, matplotlibImage: null, loadingImage: false
+  });
   const [dataModal, setDataModal] = useState({ isOpen: false, type: '' });
   const [tipsModal, setTipsModal] = useState({ isOpen: false, disaster: '' });
 
@@ -23,17 +26,33 @@ export default function WeatherForecast({ place, onBack }) {
     });
   }, [place]);
 
-  const openGraph = (type) => {
+  const openGraph = async (type, forceProbability = true) => {
     const configs = {
       landslide: { title: '16-Day Rainfall Trend', variable: 'precipitation', color: '#38bdf8', unit: 'mm' },
-      flood: { title: '1-Day Rainfall Trend', variable: 'precipitation', color: '#0ea5e9', unit: 'mm' }, // Switched to 1-day for graph but table shows 3-day
+      flood: { title: '3-Day Rainfall Trend', variable: 'rain_3day', color: '#0ea5e9', unit: 'mm' },
       thunderstorm: { title: '16-Day CAPE Trend', variable: 'cape', color: '#f59e0b', unit: 'J/kg' },
       windstorm: { title: '16-Day Wind Speed Trend', variable: 'windSpeed', color: '#10b981', unit: 'km/h' }
     };
-    // Special case for flood: if user wants 3-day, we use rain_3day
-    if (type === 'flood') configs.flood.variable = 'rain_3day';
 
-    setGraphModal({ ...configs[type], isOpen: true, type });
+    const config = configs[type];
+    setGraphModal({
+      ...config,
+      isOpen: true,
+      type,
+      isProbability: forceProbability,
+      matplotlibImage: null,
+      loadingImage: forceProbability
+    });
+
+    if (forceProbability) {
+      try {
+        const image = await fetchDisasterGraph(place, type);
+        setGraphModal(prev => ({ ...prev, matplotlibImage: image, loadingImage: false }));
+      } catch (err) {
+        console.error("Failed to load disaster graph", err);
+        setGraphModal(prev => ({ ...prev, loadingImage: false }));
+      }
+    }
   };
 
   const getSafetyTips = (disaster) => {
@@ -201,39 +220,85 @@ export default function WeatherForecast({ place, onBack }) {
               </svg>
             </button>
             <h3 className="text-xl font-bold text-white mb-6">
-              {DISASTER_ICONS[graphModal.type]} {graphModal.title}
+              {DISASTER_ICONS[graphModal.type]} {graphModal.isProbability ? `${graphModal.type.charAt(0).toUpperCase() + graphModal.type.slice(1)} Risk Probability (Matplotlib)` : graphModal.title}
             </h3>
-            <div className="h-80 w-full bg-slate-900/40 rounded-xl p-4 border border-white/5">
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={data}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
-                  <XAxis dataKey="date" tick={{ fill: '#94a3b8', fontSize: 11 }} />
-                  <YAxis
-                    tick={{ fill: '#94a3b8', fontSize: 11 }}
-                    label={{ value: graphModal.unit, position: 'insideLeft', fill: '#94a3b8', fontSize: 12, angle: -90, offset: 10 }}
+
+            <div className="min-h-[320px] w-full bg-slate-900/40 rounded-xl p-4 border border-white/5 flex flex-col items-center justify-center">
+              {graphModal.isProbability ? (
+                graphModal.loadingImage ? (
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="w-10 h-10 border-2 border-brand-500/20 border-t-brand-500 rounded-full animate-spin" />
+                    <p className="text-xs text-slate-500">Generating Matplotlib Plot...</p>
+                  </div>
+                ) : graphModal.matplotlibImage ? (
+                  <img
+                    src={`data:image/png;base64,${graphModal.matplotlibImage}`}
+                    alt="Disaster Plot"
+                    className="max-w-full h-auto rounded-lg shadow-2xl border border-white/10"
                   />
-                  <Tooltip
-                    contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: '12px', fontSize: '13px' }}
-                  />
-                  <Legend verticalAlign="top" height={36} />
-                  <Area
-                    type="monotone"
-                    dataKey={(d) => d.weather[graphModal.variable]}
-                    fill={graphModal.color}
-                    fillOpacity={0.1}
-                    stroke={graphModal.color}
-                    strokeWidth={2}
-                    name={graphModal.title}
-                  />
-                  <Bar
-                    dataKey={(d) => d.weather[graphModal.variable]}
-                    fill={graphModal.color}
-                    opacity={0.4}
-                    radius={[4, 4, 0, 0]}
-                    name="Daily Measure"
-                  />
-                </ComposedChart>
-              </ResponsiveContainer>
+                ) : (
+                  <p className="text-slate-400">Failed to load matplotlib plot.</p>
+                )
+              ) : (
+                <div className="h-80 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart data={data}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
+                      <XAxis dataKey="date" tick={{ fill: '#94a3b8', fontSize: 11 }} />
+                      <YAxis
+                        tick={{ fill: '#94a3b8', fontSize: 11 }}
+                        label={{ value: graphModal.unit, position: 'insideLeft', fill: '#94a3b8', fontSize: 12, angle: -90, offset: 10 }}
+                      />
+                      <Tooltip
+                        contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: '12px', fontSize: '13px' }}
+                      />
+                      <Legend verticalAlign="top" height={36} />
+                      <Area
+                        type="monotone"
+                        dataKey={(d) => d.weather[graphModal.variable]}
+                        fill={graphModal.color}
+                        fillOpacity={0.1}
+                        stroke={graphModal.color}
+                        strokeWidth={2}
+                        name={graphModal.title}
+                      />
+                      <Bar
+                        dataKey={(d) => d.weather[graphModal.variable]}
+                        fill={graphModal.color}
+                        opacity={0.4}
+                        radius={[4, 4, 0, 0]}
+                        name="Daily Measure"
+                      />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </div>
+
+            {/* Bottom Toggle Buttons */}
+            <div className="mt-6 flex flex-wrap justify-center gap-4">
+              <button
+                onClick={() => openGraph(graphModal.type, true)}
+                className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all border ${graphModal.isProbability
+                    ? 'bg-brand-500 text-white border-brand-500'
+                    : 'bg-slate-800 text-slate-400 border-white/5 hover:bg-slate-700'
+                  }`}
+              >
+                📊 Risk Probability
+              </button>
+
+              <button
+                onClick={() => openGraph(graphModal.type, false)}
+                className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all border ${!graphModal.isProbability
+                    ? 'bg-brand-500 text-white border-brand-500'
+                    : 'bg-slate-800 text-slate-400 border-white/5 hover:bg-slate-700'
+                  }`}
+              >
+                {graphModal.type === 'thunderstorm' && '⚡ View CAPE Trend'}
+                {graphModal.type === 'windstorm' && '💨 View Wind Speed Trend'}
+                {graphModal.type === 'flood' && '🌊 View 3-Day Rainfall Trend'}
+                {graphModal.type === 'landslide' && '🌧️ View 16-Day Rainfall Trend'}
+              </button>
             </div>
           </div>
         </div>

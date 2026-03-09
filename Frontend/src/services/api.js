@@ -155,6 +155,19 @@ export async function fetchWeatherForecast(place) {
     }
 }
 
+export async function fetchDisasterGraph(place, disaster) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/disaster_graph?place=${encodeURIComponent(place)}&disaster=${disaster}`);
+        if (!response.ok) throw new Error(`API error: ${response.statusText}`);
+        const data = await response.json();
+        if (data.error) throw new Error(data.error);
+        return data.image; // base64 string
+    } catch (error) {
+        console.error('Error fetching disaster graph:', error);
+        throw error;
+    }
+}
+
 const PLACE_DATA = {
     'Munnar': {
         description: 'Munnar is a stunning hill station in Kerala, famous for its sprawling tea plantations, rolling hills, and diverse wildlife. It is home to the Neelakurinji flower which blooms once in 12 years.',

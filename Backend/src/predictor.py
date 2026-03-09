@@ -1,4 +1,7 @@
 import os
+import io
+import base64
+import matplotlib.pyplot as plt
 from datetime import datetime
 from src.data_utils import load_model, load_landslide_data, load_flood_data, load_windstorm_data, load_thunderstorm_data, risk_level
 from src.models.landslide_logic import LandslideModel
@@ -530,6 +533,48 @@ class DisasterPredictor:
                 }
             })
         return forecast
+
+    def generate_disaster_plot(self, place, disaster_type):
+        """
+        Generates a matplotlib plot for a specific disaster probability over 16 days.
+        Returns the image as a base64 encoded string.
+        """
+        forecast = self.integrate_16day_forecast(place)
+        if not forecast:
+            return None
+
+        dates = [datetime.strptime(d["date"], "%Y-%m-%d").strftime("%d %b") for d in forecast]
+        probs = [d["risks"][disaster_type]["probability"] * 100 for d in forecast]
+
+        plt.figure(figsize=(10, 5), facecolor='#0f172a')
+        ax = plt.gca()
+        ax.set_facecolor('#1e293b')
+        
+        # Plotting
+        plt.plot(dates, probs, marker='o', color='#38bdf8', linewidth=2, label=f'{disaster_type.capitalize()} Probability')
+        plt.fill_between(dates, probs, color='#38bdf8', alpha=0.2)
+        
+        # Aesthetics
+        plt.title(f'16-Day {disaster_type.capitalize()} Risk Probability: {place}', color='white', fontsize=14, pad=20)
+        plt.xlabel('Date', color='#94a3b8', fontsize=12)
+        plt.ylabel('Probability (%)', color='#94a3b8', fontsize=12)
+        plt.xticks(rotation=45, color='#94a3b8')
+        plt.yticks(color='#94a3b8')
+        plt.grid(True, linestyle='--', alpha=0.3, color='#475569')
+        plt.ylim(0, 100)
+        
+        # Legends and margins
+        legend = plt.legend(facecolor='#1e293b', edgecolor='#475569')
+        plt.setp(legend.get_texts(), color='white')
+        plt.tight_layout()
+
+        # Save to buffer
+        buf = io.BytesIO()
+        plt.savefig(buf, format='png', transparent=False)
+        plt.close()
+        buf.seek(0)
+        img_str = base64.b64encode(buf.read()).decode('utf-8')
+        return img_str
 
 if __name__ == "__main__":
     # Sample usage
