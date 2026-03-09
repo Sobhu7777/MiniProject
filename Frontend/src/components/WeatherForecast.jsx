@@ -1,12 +1,84 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Bar, XAxis, YAxis, CartesianGrid, Area, ComposedChart, Legend } from 'recharts';
 import { fetchWeatherForecast, fetchDisasterGraph } from '../services/api';
-import {
-  BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, Legend, Area, ComposedChart
-} from 'recharts';
 
-const CONDITION_ICONS = { Sunny: '☀️', Cloudy: '☁️', Rainy: '🌧️', Stormy: '⛈️' };
 const DISASTER_ICONS = { thunderstorm: '⛈️', windstorm: '🌪️', flood: '🌊', landslide: '🏔️' };
+const DISASTER_LABELS = { thunderstorm: 'Thunderstorm', windstorm: 'Windstorm', flood: 'Flood', landslide: 'Landslide' };
+const RISK_COLORS = { LOW: '#22c55e', MODERATE: '#eab308', HIGH: '#ef4444' };
+
+function RiskBadge({ level }) {
+  const styles = {
+    LOW: 'bg-green-500/20 text-green-400 border-green-500/40',
+    MODERATE: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/40',
+    HIGH: 'bg-red-500/20 text-red-400 border-red-500/40',
+  };
+  const displayLevel = level.charAt(0) + level.slice(1).toLowerCase();
+  return (
+    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full border ${styles[level]}`}>
+      {displayLevel}
+    </span>
+  );
+}
+
+function DailyRiskPieChart({ risks }) {
+  const chartData = Object.entries(risks)
+    .map(([key, val]) => ({
+      name: DISASTER_LABELS[key],
+      value: Math.round(val.probability * 100),
+      color: RISK_COLORS[val.level],
+    }))
+    .filter(item => item.value > 0);
+
+  const renderCustomLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, name, value }) => {
+    const RADIAN = Math.PI / 180;
+    const radius = outerRadius + 15;
+    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+
+    return (
+      <text
+        x={x}
+        y={y}
+        fill="#94a3b8"
+        textAnchor={x > cx ? 'start' : 'end'}
+        dominantBaseline="central"
+        className="text-[9px] font-medium"
+      >
+        {`${name}: ${value}%`}
+      </text>
+    );
+  };
+
+  return (
+    <div className="h-40 w-full mt-2">
+      <ResponsiveContainer width="100%" height="100%">
+        <PieChart>
+          <Pie
+            data={chartData}
+            cx="50%"
+            cy="50%"
+            innerRadius={18}
+            outerRadius={35}
+            paddingAngle={2}
+            dataKey="value"
+            strokeWidth={0}
+            label={renderCustomLabel}
+            labelLine={{ stroke: '#475569', strokeWidth: 1 }}
+          >
+            {chartData.map((entry, i) => (
+              <Cell key={i} fill={entry.color} />
+            ))}
+          </Pie>
+          <Tooltip
+            contentStyle={{ background: '#1e293b', border: '1px solid #475569', borderRadius: '8px', fontSize: '9px' }}
+            itemStyle={{ color: '#e2e8f0', padding: '0px' }}
+            formatter={(value) => [`${value}%`]}
+          />
+        </PieChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
 
 export default function WeatherForecast({ place, onBack }) {
   const [data, setData] = useState(null);
@@ -16,7 +88,7 @@ export default function WeatherForecast({ place, onBack }) {
     isProbability: true, matplotlibImage: null, loadingImage: false
   });
   const [dataModal, setDataModal] = useState({ isOpen: false, type: '' });
-  const [tipsModal, setTipsModal] = useState({ isOpen: false, disaster: '' });
+  const [dayTipsModal, setDayTipsModal] = useState({ isOpen: false, dayData: null });
 
   useEffect(() => {
     setLoading(true);
@@ -66,7 +138,7 @@ export default function WeatherForecast({ place, onBack }) {
   };
 
   return (
-    <section className="fade-in max-w-7xl mx-auto px-4 sm:px-6">
+    <section className="fade-in max-w-7xl mx-auto px-4 sm:px-6 py-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
         <div>
@@ -82,8 +154,8 @@ export default function WeatherForecast({ place, onBack }) {
           <h2 className="text-3xl font-bold text-white tracking-tight">
             🛡️ 16-Day Disaster Forecast — <span className="text-brand-300">{place}</span>
           </h2>
-          <p className="text-slate-400 mt-1 max-w-2xl">
-            Integrated 16-day forecast. Use the global controls below to view detailed trends and data for each disaster.
+          <p className="text-slate-400 mt-1 max-w-2xl text-sm">
+            Integrated 16-day forecast with horizontal risk overview and per-day safety precautions.
           </p>
         </div>
       </div>
@@ -91,9 +163,8 @@ export default function WeatherForecast({ place, onBack }) {
       {!loading && (
         <div className="mb-8 space-y-6 bg-slate-900/40 p-6 rounded-2xl border border-white/5 backdrop-blur-sm">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {/* Graph Controls */}
             <div>
-              <h4 className="text-sm font-semibold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+              <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                 <span className="text-brand-500">📈</span> View Trends (Graphs)
               </h4>
               <div className="flex flex-wrap gap-3">
@@ -101,7 +172,7 @@ export default function WeatherForecast({ place, onBack }) {
                   <button
                     key={`graph-${key}`}
                     onClick={() => openGraph(key)}
-                    className="px-4 py-2.5 bg-slate-800/50 hover:bg-brand-500/20 rounded-xl border border-white/5 transition-all text-sm flex items-center gap-2 text-slate-300 hover:text-white"
+                    className="px-4 py-2 bg-slate-800/50 hover:bg-brand-500/20 rounded-xl border border-white/5 transition-all text-xs flex items-center gap-2 text-slate-300 hover:text-white"
                   >
                     <span>{icon}</span>
                     <span className="capitalize">{key}</span>
@@ -110,9 +181,8 @@ export default function WeatherForecast({ place, onBack }) {
               </div>
             </div>
 
-            {/* Data Controls */}
             <div>
-              <h4 className="text-sm font-semibold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+              <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                 <span className="text-brand-500">📑</span> View Detailed Data
               </h4>
               <div className="flex flex-wrap gap-3">
@@ -120,7 +190,7 @@ export default function WeatherForecast({ place, onBack }) {
                   <button
                     key={`data-${key}`}
                     onClick={() => setDataModal({ isOpen: true, type: key })}
-                    className="px-4 py-2.5 bg-slate-800/50 hover:bg-brand-500/20 rounded-xl border border-white/5 transition-all text-sm flex items-center gap-2 text-slate-300 hover:text-white"
+                    className="px-4 py-2 bg-slate-800/50 hover:bg-brand-500/20 rounded-xl border border-white/5 transition-all text-xs flex items-center gap-2 text-slate-300 hover:text-white"
                   >
                     <span>{icon}</span>
                     <span className="capitalize">{key}</span>
@@ -138,72 +208,96 @@ export default function WeatherForecast({ place, onBack }) {
           <p className="text-slate-400 animate-pulse">Running disaster models...</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
           {data.map((day) => (
             <div
               key={day.day}
-              className="glass-card p-5 border-surface-border/20 flex flex-col hover:border-brand-500/30 transition-all duration-300 group"
+              className="glass-card p-4 border-surface-border/20 flex flex-col hover:border-brand-500/30 transition-all duration-300"
             >
-              <div className="flex justify-between items-start mb-4 border-b border-white/5 pb-3">
+              <div className="flex justify-between items-start mb-4 border-b border-white/5 pb-2">
                 <div>
-                  <span className="text-brand-400 font-medium text-sm">Day {day.day}</span>
-                  <p className="text-lg font-bold text-white leading-none mt-1">{day.date}</p>
-                </div>
-                <div className="text-right">
-                  <span className="text-xl">{CONDITION_ICONS[day.weather.condition] || '⛅'}</span>
-                  <p className="text-[10px] text-slate-500 mt-1 uppercase tracking-wider">{day.weather.condition}</p>
+                  <span className="text-brand-400 font-medium text-[10px]">Day {day.day}</span>
+                  <p className="text-sm font-bold text-white leading-none mt-1">{day.date}</p>
                 </div>
               </div>
 
-              <div className="space-y-4 flex-grow">
-                {Object.entries(DISASTER_ICONS).map(([key, icon]) => {
-                  const risk = day.risks?.[key];
-                  const isAvailable = risk !== null && risk !== undefined;
-
-                  return (
-                    <div key={key} className="relative">
-                      <div className="flex items-center justify-between mb-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-lg">{icon}</span>
-                          <span className="text-xs font-semibold text-slate-300 capitalize">{key}</span>
-                        </div>
-                        {isAvailable ? (
-                          <div className="text-right">
-                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${risk.level === 'HIGH' ? 'bg-red-500/20 text-red-400 border-red-500/30' :
-                              risk.level === 'MODERATE' ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' :
-                                'bg-green-500/20 text-green-400 border-green-500/30'
-                              }`}>
-                              {risk.level}
-                            </span>
-                            <p className="text-[9px] text-slate-500 mt-0.5 font-mono">Prob: {risk.probability}</p>
-                          </div>
-                        ) : (
-                          <span className="text-[10px] text-slate-600 italic">N/A</span>
-                        )}
-                      </div>
-
-                      {isAvailable && (
-                        <div className="mt-2">
-                          <button
-                            onClick={() => setTipsModal({ isOpen: true, disaster: key })}
-                            className="w-full py-1.5 bg-slate-800/50 hover:bg-brand-500/20 rounded-md border border-white/5 transition-all text-[10px] flex items-center justify-center gap-2 text-slate-400 hover:text-brand-300"
-                          >
-                            🛡️ Safety Precautions
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+              {/* Horizontal Disaster Risk Layout - Forced single row */}
+              <div className="flex flex-nowrap gap-1 mb-4 justify-between overflow-x-auto no-scrollbar">
+                {Object.entries(day.risks).map(([key, risk]) => (
+                  <div key={key} className="flex flex-col items-center p-1 rounded-lg bg-slate-800/30 border border-white/5 flex-1 min-w-[55px]">
+                    <span className="text-[10px] mb-1">{DISASTER_ICONS[key]}</span>
+                    <RiskBadge level={risk.level} />
+                  </div>
+                ))}
               </div>
 
-              <div className="mt-5 pt-4 border-t border-white/5 flex justify-between items-center text-[10px] text-slate-500">
-                <span className="flex items-center gap-1">🌡️ {Math.round(day.weather.tempMax)}°/{Math.round(day.weather.tempMin)}°</span>
-                <span className="flex items-center gap-1">💧 {day.weather.precipitation}mm</span>
-                <span className="flex items-center gap-1">💨 {Math.round(day.weather.windSpeed)}k</span>
+              <div className="mt-auto space-y-3">
+                <button
+                  onClick={() => setDayTipsModal({ isOpen: true, dayData: day })}
+                  className="w-full py-2 bg-brand-500/10 hover:bg-brand-500/20 border border-brand-500/20 rounded-xl text-[10px] font-bold text-brand-300 transition-colors flex items-center justify-center gap-2"
+                >
+                  🛡️ View Precaution
+                </button>
+
+                <div className="border-t border-white/5 pt-2">
+                  <DailyRiskPieChart risks={day.risks} />
+                </div>
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Day Precautions Modal */}
+      {dayTipsModal.isOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md fade-in">
+          <div className="glass-card w-full max-w-md p-6 relative animate-in zoom-in-95 duration-200">
+            <button
+              onClick={() => setDayTipsModal({ isOpen: false, dayData: null })}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <h3 className="text-xl font-bold text-white mb-2">
+              🛡️ Precautions - Day {dayTipsModal.dayData?.day}
+            </h3>
+            <p className="text-slate-400 text-xs mb-6">{dayTipsModal.dayData?.date}</p>
+
+            <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+              {Object.entries(dayTipsModal.dayData?.risks || {}).map(([type, risk]) => (
+                (risk.level === 'MODERATE' || risk.level === 'HIGH') && (
+                  <div key={type} className="space-y-3">
+                    <div className="flex items-center gap-2 pb-2 border-b border-white/5">
+                      <span className="text-xl">{DISASTER_ICONS[type]}</span>
+                      <h4 className="text-sm font-bold text-white capitalize">{type} Precautions</h4>
+                      <RiskBadge level={risk.level} />
+                    </div>
+                    {getSafetyTips(type).map((tip, i) => (
+                      <div key={i} className="flex gap-3 text-xs text-slate-300 bg-slate-800/40 p-3 rounded-lg border border-white/5">
+                        <span className="text-brand-400 font-bold shrink-0">{i + 1}.</span>
+                        <p>{tip}</p>
+                      </div>
+                    ))}
+                  </div>
+                )
+              ))}
+              {Object.values(dayTipsModal.dayData?.risks || {}).every(r => r.level === 'LOW') && (
+                <div className="text-center py-8">
+                  <span className="text-4xl mb-3 block">✅</span>
+                  <p className="text-sm text-slate-400">All disaster risks are LOW. Regular safety protocols apply.</p>
+                </div>
+              )}
+            </div>
+
+            <button
+              onClick={() => setDayTipsModal({ isOpen: false, dayData: null })}
+              className="w-full mt-8 py-3 bg-brand-600 text-white rounded-xl font-bold hover:bg-brand-500 transition-colors"
+            >
+              Got it, thanks!
+            </button>
+          </div>
         </div>
       )}
 
@@ -275,13 +369,12 @@ export default function WeatherForecast({ place, onBack }) {
               )}
             </div>
 
-            {/* Bottom Toggle Buttons */}
             <div className="mt-6 flex flex-wrap justify-center gap-4">
               <button
                 onClick={() => openGraph(graphModal.type, true)}
                 className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all border ${graphModal.isProbability
-                    ? 'bg-brand-500 text-white border-brand-500'
-                    : 'bg-slate-800 text-slate-400 border-white/5 hover:bg-slate-700'
+                  ? 'bg-brand-500 text-white border-brand-500'
+                  : 'bg-slate-800 text-slate-400 border-white/5 hover:bg-slate-700'
                   }`}
               >
                 📊 Risk Probability
@@ -290,8 +383,8 @@ export default function WeatherForecast({ place, onBack }) {
               <button
                 onClick={() => openGraph(graphModal.type, false)}
                 className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all border ${!graphModal.isProbability
-                    ? 'bg-brand-500 text-white border-brand-500'
-                    : 'bg-slate-800 text-slate-400 border-white/5 hover:bg-slate-700'
+                  ? 'bg-brand-500 text-white border-brand-500'
+                  : 'bg-slate-800 text-slate-400 border-white/5 hover:bg-slate-700'
                   }`}
               >
                 {graphModal.type === 'thunderstorm' && '⚡ View CAPE Trend'}
@@ -323,49 +416,10 @@ export default function WeatherForecast({ place, onBack }) {
             <div className="overflow-x-auto flex-grow rounded-xl border border-white/5">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-slate-800/80 text-[10px] uppercase tracking-wider text-slate-400">
+                  <tr className="bg-slate-800/80 text-xs uppercase tracking-wider text-slate-400">
                     <th className="px-4 py-3 border-b border-white/5">Date</th>
-
-                    {dataModal.type === 'landslide' && (
-                      <>
-                        <th className="px-4 py-3 border-b border-white/5">Rain</th>
-                        <th className="px-4 py-3 border-b border-white/5">Landslide Risk</th>
-                      </>
-                    )}
-
-                    {dataModal.type === 'flood' && (
-                      <>
-                        <th className="px-4 py-3 border-b border-white/5">Rain</th>
-                        <th className="px-4 py-3 border-b border-white/5">3-Day</th>
-                        <th className="px-4 py-3 border-b border-white/5">Temp</th>
-                        <th className="px-4 py-3 border-b border-white/5">Humidity</th>
-                        <th className="px-4 py-3 border-b border-white/5">Flood Risk</th>
-                      </>
-                    )}
-
-                    {dataModal.type === 'thunderstorm' && (
-                      <>
-                        <th className="px-4 py-3 border-b border-white/5">CAPE</th>
-                        <th className="px-4 py-3 border-b border-white/5">Rain</th>
-                        <th className="px-4 py-3 border-b border-white/5">Temp</th>
-                        <th className="px-4 py-3 border-b border-white/5">Dew Pt</th>
-                        <th className="px-4 py-3 border-b border-white/5">Pressure</th>
-                        <th className="px-4 py-3 border-b border-white/5">Wind</th>
-                        <th className="px-4 py-3 border-b border-white/5">Prob</th>
-                        <th className="px-4 py-3 border-b border-white/5">Risk</th>
-                      </>
-                    )}
-
-                    {dataModal.type === 'windstorm' && (
-                      <>
-                        <th className="px-4 py-3 border-b border-white/5">Wind</th>
-                        <th className="px-4 py-3 border-b border-white/5">3-Day</th>
-                        <th className="px-4 py-3 border-b border-white/5">Temp</th>
-                        <th className="px-4 py-3 border-b border-white/5">Humidity</th>
-                        <th className="px-4 py-3 border-b border-white/5">Prob</th>
-                        <th className="px-4 py-3 border-b border-white/5">Risk</th>
-                      </>
-                    )}
+                    <th className="px-4 py-3 border-b border-white/5">Prob</th>
+                    <th className="px-4 py-3 border-b border-white/5">Risk</th>
                   </tr>
                 </thead>
                 <tbody className="text-xs">
@@ -375,55 +429,10 @@ export default function WeatherForecast({ place, onBack }) {
                     return (
                       <tr key={day.day} className="border-b border-white/5 hover:bg-white/5 transition-colors">
                         <td className="px-4 py-2.5 text-slate-300 font-mono">{day.fullDate}</td>
-
-                        {dataModal.type === 'landslide' && (
-                          <>
-                            <td className="px-4 py-2.5 text-white font-bold">Rain: {day.weather.precipitation} mm</td>
-                            <td className={`px-4 py-2.5 font-bold ${risk.level === 'HIGH' ? 'text-red-400' : risk.level === 'MODERATE' ? 'text-yellow-400' : 'text-green-400'}`}>
-                              {risk.level} ({risk.probability})
-                            </td>
-                          </>
-                        )}
-
-                        {dataModal.type === 'flood' && (
-                          <>
-                            <td className="px-4 py-2.5 text-slate-300 font-bold">Rain: {day.weather.precipitation} mm</td>
-                            <td className="px-4 py-2.5 text-slate-300">3-Day: {day.weather.rain_3day} mm</td>
-                            <td className="px-4 py-2.5 text-slate-300">Temp: {day.weather.tempMax} °C</td>
-                            <td className="px-4 py-2.5 text-slate-300">Humidity: {day.weather.humidity} %</td>
-                            <td className={`px-4 py-2.5 font-bold ${risk.level === 'HIGH' ? 'text-red-400' : risk.level === 'MODERATE' ? 'text-yellow-400' : 'text-green-400'}`}>
-                              {risk.level} ({risk.probability})
-                            </td>
-                          </>
-                        )}
-
-                        {dataModal.type === 'thunderstorm' && (
-                          <>
-                            <td className="px-4 py-2.5 text-white font-bold">CAPE: {day.weather.cape}</td>
-                            <td className="px-4 py-2.5 text-slate-300">Rain: {day.weather.precipitation}mm</td>
-                            <td className="px-4 py-2.5 text-slate-300">Temp: {day.weather.tempMax}°C</td>
-                            <td className="px-4 py-2.5 text-slate-300">Dew: {day.weather.dewpoint}°C</td>
-                            <td className="px-4 py-2.5 text-slate-300">Press: {day.weather.pressure}(hPa)</td>
-                            <td className="px-4 py-2.5 text-slate-300">Wind: {day.weather.windSpeed}(km/h)</td>
-                            <td className="px-4 py-2.5 font-mono text-brand-300">Prob: {risk.probability}</td>
-                            <td className={`px-4 py-2.5 font-bold ${risk.level === 'HIGH' ? 'text-red-400' : risk.level === 'MODERATE' ? 'text-yellow-400' : 'text-green-400'}`}>
-                              Risk: {risk.level}
-                            </td>
-                          </>
-                        )}
-
-                        {dataModal.type === 'windstorm' && (
-                          <>
-                            <td className="px-4 py-2.5 text-white font-bold">Wind: {day.weather.windSpeed} km/h</td>
-                            <td className="px-4 py-2.5 text-slate-300">3-Day: {day.weather.wind_3day || 'N/A'}</td>
-                            <td className="px-4 py-2.5 text-slate-300">Temp: {day.weather.tempMax}°C</td>
-                            <td className="px-4 py-2.5 text-slate-300">Hum: {day.weather.humidity}%</td>
-                            <td className="px-4 py-2.5 font-mono text-brand-300">Prob: {risk.probability}</td>
-                            <td className={`px-4 py-2.5 font-bold ${risk.level === 'HIGH' ? 'text-red-400' : risk.level === 'MODERATE' ? 'text-yellow-400' : 'text-green-400'}`}>
-                              Risk: {risk.level}
-                            </td>
-                          </>
-                        )}
+                        <td className="px-4 py-2.5 font-mono text-brand-300">{risk.probability}</td>
+                        <td className="px-4 py-2.5">
+                          <RiskBadge level={risk.level} />
+                        </td>
                       </tr>
                     );
                   })}
@@ -431,46 +440,18 @@ export default function WeatherForecast({ place, onBack }) {
               </table>
             </div>
 
-            <div className="mt-6 flex justify-between items-center text-xs text-slate-400 italic">
-              <p>Source: Open-Meteo Weather API (16-Day Forecast Model)</p>
+            <div className="mt-6 flex justify-between items-center text-[10px] text-slate-400 italic">
+              <p>Model Source: AEDP-16 Forecast</p>
               <button
                 onClick={() => setDataModal({ isOpen: false, type: '' })}
                 className="px-6 py-2 bg-slate-700 text-white rounded-xl font-bold hover:bg-slate-600 transition-colors"
               >
-                Close Data View
+                Close View
               </button>
             </div>
           </div>
         </div>
       )}
-
-      {/* Safety Tips Modal */}
-      {tipsModal.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm fade-in">
-          <div className="glass-card w-full max-w-md p-6 relative animate-in zoom-in-95 duration-200">
-            <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-              <span className="text-2xl">{DISASTER_ICONS[tipsModal.disaster]}</span>
-              Safety Precautions
-            </h3>
-            <div className="space-y-3 mb-6">
-              {getSafetyTips(tipsModal.disaster).map((tip, i) => (
-                <div key={i} className="flex gap-3 text-sm text-slate-300 bg-slate-800/40 p-3 rounded-lg border border-white/5">
-                  <span className="text-brand-400 font-bold shrink-0">{i + 1}.</span>
-                  <p>{tip}</p>
-                </div>
-              ))}
-            </div>
-            <button
-              onClick={() => setTipsModal({ isOpen: false, disaster: '' })}
-              className="w-full py-3 bg-brand-600 text-white rounded-xl font-bold hover:bg-brand-500 transition-colors"
-            >
-              Got it, thanks!
-            </button>
-          </div>
-        </div>
-      )}
-
-
     </section>
   );
 }
