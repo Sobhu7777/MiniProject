@@ -295,7 +295,7 @@ class DisasterPredictor:
         })
         hourly_df["date"] = hourly_df["time"].dt.date
         agg = hourly_df.groupby("date").agg({
-            "dewpoint": "mean", "pressure": "mean", "wind": "mean", "cape": "max"
+            "dewpoint": "mean", "pressure": "mean", "wind": "mean", "cape": "mean"
         }).to_dict("index")
         results = []
         for i, date_str in enumerate(daily_dates):
@@ -424,7 +424,7 @@ class DisasterPredictor:
             "dewpoint": "mean",
             "pressure": "mean",
             "wind": "mean",
-            "cape": "max"
+            "cape": "mean"
         }).to_dict("index")
         
         results = []

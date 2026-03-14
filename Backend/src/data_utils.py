@@ -76,9 +76,9 @@ def get_historical_daily_baseline(df, place, month):
     return historical_daily_baseline
 
 def risk_level(prob):
-    if prob < 0.3:
+    if prob <= 0.35:
         return "LOW"
-    elif prob < 0.6:
+    elif prob <= 0.60:
         return "MODERATE"
     else:
         return "HIGH"

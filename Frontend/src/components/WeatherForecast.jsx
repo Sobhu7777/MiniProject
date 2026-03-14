@@ -420,6 +420,35 @@ export default function WeatherForecast({ place, onBack }) {
                     <th className="px-4 py-3 border-b border-white/5">Date</th>
                     <th className="px-4 py-3 border-b border-white/5">Prob</th>
                     <th className="px-4 py-3 border-b border-white/5">Risk</th>
+                    {dataModal.type === 'landslide' && (
+                      <th className="px-4 py-3 border-b border-white/5">Precip (mm)</th>
+                    )}
+                    {dataModal.type === 'flood' && (
+                      <>
+                        <th className="px-4 py-3 border-b border-white/5">Precip (mm)</th>
+                        <th className="px-4 py-3 border-b border-white/5">3-Day Rain (mm)</th>
+                        <th className="px-4 py-3 border-b border-white/5">Temp (°C)</th>
+                        <th className="px-4 py-3 border-b border-white/5">Humidity (%)</th>
+                      </>
+                    )}
+                    {dataModal.type === 'thunderstorm' && (
+                      <>
+                        <th className="px-4 py-3 border-b border-white/5">Temp (°C)</th>
+                        <th className="px-4 py-3 border-b border-white/5">Dewpt (°C)</th>
+                        <th className="px-4 py-3 border-b border-white/5">Pressure (hPa)</th>
+                        <th className="px-4 py-3 border-b border-white/5">Wind (km/h)</th>
+                        <th className="px-4 py-3 border-b border-white/5">Precip (mm)</th>
+                        <th className="px-4 py-3 border-b border-white/5">CAPE (J/kg)</th>
+                      </>
+                    )}
+                    {dataModal.type === 'windstorm' && (
+                      <>
+                        <th className="px-4 py-3 border-b border-white/5">Wind Max (km/h)</th>
+                        <th className="px-4 py-3 border-b border-white/5">3-Day Wind (km/h)</th>
+                        <th className="px-4 py-3 border-b border-white/5">Temp (°C)</th>
+                        <th className="px-4 py-3 border-b border-white/5">Humidity (%)</th>
+                      </>
+                    )}
                   </tr>
                 </thead>
                 <tbody className="text-xs">
@@ -428,11 +457,40 @@ export default function WeatherForecast({ place, onBack }) {
                     if (!risk) return null;
                     return (
                       <tr key={day.day} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                        <td className="px-4 py-2.5 text-slate-300 font-mono">{day.fullDate}</td>
+                        <td className="px-4 py-2.5 text-slate-300 font-mono whitespace-nowrap">{day.fullDate}</td>
                         <td className="px-4 py-2.5 font-mono text-brand-300">{risk.probability}</td>
                         <td className="px-4 py-2.5">
                           <RiskBadge level={risk.level} />
                         </td>
+                        {dataModal.type === 'landslide' && (
+                          <td className="px-4 py-2.5 text-slate-300">{day.weather.precipitation}</td>
+                        )}
+                        {dataModal.type === 'flood' && (
+                          <>
+                            <td className="px-4 py-2.5 text-slate-300">{day.weather.precipitation}</td>
+                            <td className="px-4 py-2.5 text-slate-300">{day.weather.rain_3day}</td>
+                            <td className="px-4 py-2.5 text-slate-300">{day.weather.tempMax}</td>
+                            <td className="px-4 py-2.5 text-slate-300">{day.weather.humidity}</td>
+                          </>
+                        )}
+                        {dataModal.type === 'thunderstorm' && (
+                          <>
+                            <td className="px-4 py-2.5 text-slate-300">{day.weather.tempMax}</td>
+                            <td className="px-4 py-2.5 text-slate-300">{day.weather.dewpoint}</td>
+                            <td className="px-4 py-2.5 text-slate-300">{day.weather.pressure}</td>
+                            <td className="px-4 py-2.5 text-slate-300">{day.weather.windSpeed}</td>
+                            <td className="px-4 py-2.5 text-slate-300">{day.weather.precipitation}</td>
+                            <td className="px-4 py-2.5 text-slate-300">{day.weather.cape}</td>
+                          </>
+                        )}
+                        {dataModal.type === 'windstorm' && (
+                          <>
+                            <td className="px-4 py-2.5 text-slate-300">{day.weather.windSpeed}</td>
+                            <td className="px-4 py-2.5 text-slate-300">{day.weather.wind_3day}</td>
+                            <td className="px-4 py-2.5 text-slate-300">{day.weather.tempMax}</td>
+                            <td className="px-4 py-2.5 text-slate-300">{day.weather.humidity}</td>
+                          </>
+                        )}
                       </tr>
                     );
                   })}

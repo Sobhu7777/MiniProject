@@ -1,0 +1,7 @@
+                               mean         min          max
+2m_temperature            31.057544   12.400000    47.600000
+10m_wind_speed            17.938803    4.100000    71.000000
+total_precipitation        4.348748    0.000000   424.400000
+2m_dewpoint_temperature   17.127706  -17.833333    27.437500
+surface_pressure         983.128273  842.420833  1018.270833
+cape                     468.800744    0.000000  3804.583333
